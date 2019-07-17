@@ -1,12 +1,14 @@
 package com.example.chess;
 
 public class Piece {
-    public int col;
-    public int row;
+    public String name;
 
-    public Piece(int col, int row){
-        this.col = col;
-        this.row = row;
+    public Piece(String name){
+        this.name = name;
     }
 
+    @Override
+    public String toString() {
+        return this.name;
+    }
 }
