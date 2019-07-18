@@ -18,7 +18,7 @@ public class Board {
     }
 
     public void swap(int[] currentPos, int[] newPos) {
-        Log.v("swap", currentPos[0]+" "+currentPos[1]+" - "+newPos[0]+" "+newPos[1]);
+//        Log.v("swap", currentPos[0]+" "+currentPos[1]+" - "+newPos[0]+" "+newPos[1]);
         Piece tempPiece = (Piece)this.pieces[currentPos[0]][currentPos[1]].getTag();
         tempPiece.setPos(newPos);
 

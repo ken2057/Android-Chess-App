@@ -151,7 +151,6 @@ public class BoardActivity extends AppCompatActivity {
 
                             spAct.setTotQuaDuongAt(new int[]{-1, -1});
                         }
-                        Log.v("???", board.pieces[0][0].getTag().toString()+"");
                         spAct.setLastPieceMove(board.pieces[posOld[0]][posOld[1]].getTag().toString());
 
                         Log.v("LAST PIECE MOVED", spAct.getLastPieceMove());
@@ -260,8 +259,8 @@ public class BoardActivity extends AppCompatActivity {
                     gridChess.addView(board.pieces[i][j]);
                 }
             }
-            Log.v("BLACK ALIVE/KILL", blackTeam.alive.size() + "/" + blackTeam.alive.size());
-            Log.v("WHITE ALIVE/KILL", whiteTeam.alive.size() + "/" + whiteTeam.alive.size());
+            Log.v("BLACK ALIVE/KILL", blackTeam.alive.size() + "/" + blackTeam.kill.size());
+            Log.v("WHITE ALIVE/KILL", whiteTeam.alive.size() + "/" + whiteTeam.kill.size());
         }
     }
 
@@ -292,14 +291,15 @@ public class BoardActivity extends AppCompatActivity {
 
         if (v.getTag().toString().contains("pawn")) {
             if(!isKingCheckMove) {
-                //move 2
-                if ((pos[0] == 6 && move == 1) || (pos[0] == 1 && move == -1)) {
-                    if (isPosEmpty(new int[]{pos[0] - move * 2, pos[1]}))
-                        moveAble_temp.add(new int[]{pos[0] - move * 2, pos[1]});
-                }
                 //move 1
-                if (isPosEmpty(new int[]{pos[0] - move, pos[1]}))
+                if (isPosEmpty(new int[]{pos[0] - move, pos[1]})) {
                     moveAble_temp.add(new int[]{pos[0] - move, pos[1]});
+                    //move 2
+                    if ((pos[0] == 6 && move == 1) || (pos[0] == 1 && move == -1)) {
+                        if (isPosEmpty(new int[]{pos[0] - move * 2, pos[1]}))
+                            moveAble_temp.add(new int[]{pos[0] - move * 2, pos[1]});
+                    }
+                }
                 //bắt chốt qua đường
                 //2 con nam ke nhau
                 boolean first = Math.abs(spAct.lastPiecePos[1] - pos[1]) == 1;
@@ -325,14 +325,15 @@ public class BoardActivity extends AppCompatActivity {
                 }
             }
             //kill left
-
-            if(pos[1] - move >= 0)
-                if ( !isPosEmpty(new int[]{pos[0] - move, pos[1] - move}) || isKingCheckMove)
+            if(pos[1] - move >= 0) {
+                if (!isPosEmpty(new int[]{pos[0] - move, pos[1] - move}) || isKingCheckMove)
                     moveAble_temp.add(new int[]{pos[0] - move, pos[1] - move});
+            }
             //kill right
-            if(pos[1] + move < 8)
-                if(!isPosEmpty(new int[]{pos[0] - move, pos[1] + move}) || isKingCheckMove)
+            if(pos[1] + move < 8) {
+                if (!isPosEmpty(new int[]{pos[0] - move, pos[1] + move}) || isKingCheckMove)
                     moveAble_temp.add(new int[]{pos[0] - move, pos[1] + move});
+            }
         }
         else if (v.getTag().toString().contains("knight")) {
             int[] posX = new int[]{-1, 1, 2, 2, 1, -1, -2, -2};
@@ -346,8 +347,6 @@ public class BoardActivity extends AppCompatActivity {
                             moveAble_temp.add(newPos);
                     } else
                         moveAble_temp.add(newPos);
-//                    if(isKingCheckMove)
-//                        moveAble_temp.add(newPos);
                 }
             }
         }
@@ -364,7 +363,6 @@ public class BoardActivity extends AppCompatActivity {
         else if (v.getTag().toString().contains("king")) {
             int[] posX = new int[]{-1, -1, -1,  0, 0,  1, 1, 1};
             int[] posY = new int[]{-1,  0,  1, -1, 1, -1, 0, 1};
-            ArrayList<int[]> movePossibility = new ArrayList<>();
 
             for(int i = 0; i < posX.length; i++){
                 posX[i] += pos[0];
@@ -373,64 +371,24 @@ public class BoardActivity extends AppCompatActivity {
                 if(Math.min(posX[i], posY[i]) >= 0
                         && Math.max(posX[i], posY[i]) < 8
                         && !board.pieces[posX[i]][posY[i]].getTag().toString().contains(partsV[1]))
-                    movePossibility.add(new int[]{ posX[i], posY[i] });
+                    moveAble_temp.add(new int[]{ posX[i], posY[i] });
             }
-            moveAble_temp.addAll(movePossibility);
-//            if(!isKingCheckMove) {
-//                for(int i = 0; i < movePossibility.size(); i++)
-//                    //neu pos empty hoac la quan dich
-//                    if(isPosEmpty(movePossibility.get(i)) ||
-//                            !pieces[movePossibility.get(i)[0]][movePossibility.get(i)[1]].getTag().toString().contains(partsV[1])){
-//                        isKingCheckMove = true;
-//                        break;
-//                    }
-//
-//                //king can move
-//                if (isKingCheckMove) {
-//                    ArrayList<int[]> cantMovePos = new ArrayList<>();
-//                    ArrayList<ImageView> check = new ArrayList<>(whiteAlive);
-//                    if (partsV[1].equals("white"))
-//                        check = new ArrayList<>(blackAlive);
-//
-//                    for (int i = 0; i < check.size(); i++) {
-//                        cantMovePos.addAll(checkMoveAble(check.get(i)));
-//                    }
-//
-//                    ArrayList<int[]> moveTemp = new ArrayList<>(movePossibility);
-//
-//                    for (int i = 0; i < movePossibility.size(); i++) {
-//                        for(int j = 0; j < cantMovePos.size(); j++){
-//                            int[] temp = cantMovePos.get(j);
-//                            int[] temp2 = movePossibility.get(i);
-//
-//                            if(temp[0] == temp2[0] && temp[1] == temp2[1]){
-//                                moveTemp.remove(temp2);
-//                                break;
-//                            }
-//                        }
-//                    }
-//
-//                    moveAble_temp.addAll(moveTemp);
-//
-//                    isKingCheckMove = false;
-//                }
-//            }else{
-//                moveAble_temp.addAll(movePossibility);
-//            }
         }
-
         if(!isKingCheckMove) {
-            isKingCheckMove = true;
-            ArrayList<int[]> posCanMove = new ArrayList<>();
-            for (int i = 0; i < moveAble_temp.size(); i++) {
-                int[] temp = moveAble_temp.get(i);
-                if(Math.min(temp[0], temp[1]) >= 0 && Math.min(temp[0], temp[1]) < 8)
-                    if (!isCheckMate(v, moveAble_temp.get(i).clone())) {
-                        posCanMove.add(moveAble_temp.get(i).clone());
-                    }
+            try {
+                isKingCheckMove = true;
+                ArrayList<int[]> posCanMove = new ArrayList<>();
+                for (int i = 0; i < moveAble_temp.size(); i++) {
+                    int[] temp = moveAble_temp.get(i);
+                    if (Math.min(temp[0], temp[1]) >= 0 && Math.min(temp[0], temp[1]) < 8)
+                        if (!isCheckMate(v, moveAble_temp.get(i).clone()))
+                            posCanMove.add(moveAble_temp.get(i).clone());
+                }
+                return posCanMove;
+            }catch (Exception ex){ Log.v("Error sth", ex.getMessage()+""); }
+            finally {
+                isKingCheckMove = false;
             }
-            isKingCheckMove = false;
-            return posCanMove;
         }
         return moveAble_temp;
     }
@@ -512,7 +470,6 @@ public class BoardActivity extends AppCompatActivity {
         ImageView imgNextPos = board.pieces[nextPos[0]][nextPos[1]];
         Piece p = (Piece)imgNextPos.getTag();
         p.setPos(((Piece)board.pieces[currentPos[0]][currentPos[1]].getTag()).getPos());
-        imgNextPos.setTag(p);
 
         ImageView emptyImg = createEmptyView();
         emptyImg.setTag(new Piece("null", nextPos));
@@ -525,37 +482,37 @@ public class BoardActivity extends AppCompatActivity {
 
         //find current king pos
         int[] kingPos = ((Piece)oldTeam.alive.get(0).getTag()).getPos();
+        if(v.getTag().toString().contains("king")){
+            kingPos = ((Piece)v.getTag()).getPos();
+        }
 
         try{
+            currentOpponent.alive.remove(imgNextPos);
             for(int i = 0; i < currentOpponent.alive.size(); i++){
                 ArrayList<int[]> temp = checkMoveAble(currentOpponent.alive.get(i));
                 for(int j = 0; j < temp.size(); j++){
                     int[] pos = temp.get(j).clone();
+//                    Log.v("????????????",pos[0]+":"+pos[1]+" "+kingPos[0]+":"+kingPos[1]);
                     if(pos[0] == kingPos[0] && pos[1] == kingPos[1] )
                         return true;
                 }
             }
-            return false;
+
         }
         catch (Exception ex){
             Log.v("Error sth", ex.getMessage()+"");
         }
         finally {
+            if(!imgNextPos.getTag().toString().equals("null")) {
+                if(imgNextPos.getTag().toString().contains("king"))
+                    currentOpponent.alive.add(0, imgNextPos);
+                else
+                    currentOpponent.alive.add(imgNextPos);
+            }
+
+            imgNextPos.setTag(p);
             board.pieces[currentPos[0]][currentPos[1]] = imgNextPos;
             board.swap(currentPos, nextPos);
-
-            if(partV[1].equals("white")) {
-//                Log.v("equal team 1", blackTeam.alive.equals(oldOpponent.alive)+"");
-                blackTeam = oldOpponent.clone();
-                whiteTeam = oldTeam.clone();
-//                Log.v("equal team 2", blackTeam.alive.equals(oldOpponent.alive)+"");
-            }
-            else {
-//                Log.v("equal team 1", blackTeam.alive.equals(oldTeam.alive)+"");
-                blackTeam = oldTeam.clone();
-                whiteTeam = oldOpponent.clone();
-//                Log.v("equal team 2", blackTeam.alive.equals(oldTeam.alive)+"");
-            }
         }
 
         return false;
