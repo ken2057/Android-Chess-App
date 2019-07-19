@@ -50,6 +50,7 @@ public class BoardActivity extends AppCompatActivity {
             @Override
             public boolean onDrag(View v, DragEvent e) {
                 if (e.getAction() == DragEvent.ACTION_DROP) {
+                    GridLayout gridEffect = findViewById(R.id.gridEffect);
                     ImageView imgView = (ImageView) e.getLocalState();
                     Log.v("???", v.getTag()+" "+imgView.getTag());
                     int[] posNew = ((Piece)v.getTag()).getPos();
@@ -88,7 +89,17 @@ public class BoardActivity extends AppCompatActivity {
                         board.pieces[posOld[0]][posOld[1]].setTag(p);
 
                         board.swap(posNew, posOld);
+
+                        isCheckMate = isCheckMate(board.pieces[posNew[0]][posNew[1]]);
+
                         reDraw();
+                    }
+                    else{
+                        gridEffect.removeAllViewsInLayout();
+                        if(isCheckMate) {
+                            moveAble = new ArrayList<>();
+                            reDrawEffect();
+                        }
                     }
                 }
 
@@ -106,7 +117,7 @@ public class BoardActivity extends AppCompatActivity {
                     View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(v);
                     v.startDragAndDrop(data, shadowBuilder, v, 0);
 
-                    moveAble = checkMoveAble(v);
+                    moveAble = getMoveAble(v);
                     for (int i = 0; i < moveAble.size(); i++) {
                         int[] temp = moveAble.get(i);
                         Log.v("moveAble", temp[0] + " " + temp[1]);
@@ -114,7 +125,6 @@ public class BoardActivity extends AppCompatActivity {
                     addEffectMoveAble();
                     reDrawEffect();
                 }
-
                 return true;
             }
         });
@@ -131,6 +141,7 @@ public class BoardActivity extends AppCompatActivity {
             @Override
             public boolean onDrag(View v, DragEvent e) {
                 if (e.getAction() == DragEvent.ACTION_DROP) {
+                    GridLayout gridEffect = findViewById(R.id.gridEffect);
                     ImageView imgView = (ImageView) e.getLocalState();
 
                     int[] posNew = ((Piece)v.getTag()).getPos();
@@ -173,7 +184,14 @@ public class BoardActivity extends AppCompatActivity {
                         board.pieces[posOld[0]][posOld[1]].setTag(p);
 
                         board.swap(posNew, posOld);
+
+                        isCheckMate = isCheckMate(board.pieces[posNew[0]][posNew[1]]);
+
                         reDraw();
+                    }
+                    else {
+                        if(!isCheckMate)
+                            gridEffect.removeAllViewsInLayout();
                     }
                 }
 
@@ -267,17 +285,27 @@ public class BoardActivity extends AppCompatActivity {
 
     private void reDraw() {
         if (!isKingCheckMove) {
+            moveAble = new ArrayList<>();
+            Log.v("isCheckMate", isCheckMate+"");
             addEffectMoveAble();
             GridLayout gridEffect = findViewById(R.id.gridEffect);
             GridLayout gridChess = findViewById(R.id.gridChess);
             gridChess.removeAllViewsInLayout();
             gridEffect.removeAllViewsInLayout();
+
+            if (isCheckMate) {
+                addEffectCheckMate();
+            }
+
             for (int i = 0; i < 8; i++) {
                 for (int j = 0; j < 8; j++) {
                     if (board.pieces[i][j].getParent() != null) {
                         ((GridLayout) board.pieces[i][j].getParent()).removeView(board.pieces[i][j]);
                     }
                     gridChess.addView(board.pieces[i][j]);
+                    if(isCheckMate){
+                        gridEffect.addView(board.effect[i][j]);
+                    }
                 }
             }
             Log.v("BLACK ALIVE/KILL", blackTeam.alive.size() + "/" + blackTeam.kill.size());
@@ -288,14 +316,32 @@ public class BoardActivity extends AppCompatActivity {
     private void reDrawEffect(){
         GridLayout gridEffect = findViewById(R.id.gridEffect);
         gridEffect.removeAllViewsInLayout();
-        if(moveAble.size() > 0) {
+        String[] partV = spAct.lastPieceMove.split(" ");
+        int[] kingPos = new int[]{-1,-1};
+        if(isCheckMate) {
+            Team t = new Team(blackTeam);
+            if(!partV[1].equals("white"))
+                t = new Team(whiteTeam);
+            kingPos = ((Piece)t.alive.get(0).getTag()).getPos();
+            board.effect[kingPos[0]][kingPos[1]] = createEmptyView();
+            board.effect[kingPos[0]][kingPos[1]].setBackgroundColor(Color.parseColor("#cf213e"));
+        }
+
+        if(moveAble.size() > 0 || isCheckMate) {
             for (int i = 0; i < 8; i++) {
                 for (int j = 0; j < 8; j++) {
-                    gridEffect.addView(board.effect[i][j]);
+                    if(moveAble.size() != 0)
+                        gridEffect.addView(board.effect[i][j]);
+                    else {
+                        if (Arrays.equals(kingPos, new int[]{i,j}))
+                            gridEffect.addView(board.effect[i][j]);
+                        else
+                            gridEffect.addView(createEmptyView());
+                    }
                 }
             }
         }
-        Log.v("Add effect", "Effect added");
+        Log.v("Add effect", "Added");
     }
 
     private int[] getPositionArr(View v) {
@@ -317,14 +363,14 @@ public class BoardActivity extends AppCompatActivity {
         return false;
     }
 
-    private ArrayList<int[]> checkMoveAble(View v) {
+    private ArrayList<int[]> getMoveAble(View v) {
         ArrayList<int[]> moveAble_temp = new ArrayList<>();
         int[] pos = ((Piece)v.getTag()).getPos();
         int move = v.getTag().toString().contains("white") ? 1 : -1;
         String[] partsV = v.getTag().toString().split(" ");
 
         if (v.getTag().toString().contains("pawn")) {
-            if(!isKingCheckMove) {
+            if (!isKingCheckMove) {
                 //move 1
                 if (isPosEmpty(new int[]{pos[0] - move, pos[1]})) {
                     moveAble_temp.add(new int[]{pos[0] - move, pos[1]});
@@ -359,18 +405,17 @@ public class BoardActivity extends AppCompatActivity {
                 }
             }
             //kill left
-//            String t = "&& !board.pieces[pos[0]-move][pos[1]-move].getTag().toString().contains(partsV[1])";
-//            Log.v("???????//", board.pieces[pos[0]-move][pos[1]-move].getTag()+" "+partsV[1]);
-//            Log.v("?????????", board.pieces[pos[0]-move][pos[1]-move].getTag().toString().contains(partsV[1])+"");
-            if(pos[1] - move >= 0 && board.pieces[pos[0]-move][pos[1]-move].getTag().toString().contains(partsV[1])) {
-                if (!isPosEmpty(new int[]{pos[0] - move, pos[1] - move}) || isKingCheckMove)
-                    moveAble_temp.add(new int[]{pos[0] - move, pos[1] - move});
-            }
+            if ( pos[0] - move >= 0 && pos[0] - move < 8 && pos[1] - move >= 0 && pos[1] - move < 8)
+                if (!board.pieces[pos[0] - move][pos[1] - move].getTag().toString().contains(partsV[1])) {
+                    if (!isPosEmpty(new int[]{pos[0] - move, pos[1] - move}) || isKingCheckMove)
+                        moveAble_temp.add(new int[]{pos[0] - move, pos[1] - move});
+                }
             //kill right
-            if(pos[1] + move < 8 && board.pieces[pos[0]-move][pos[1]-move].getTag().toString().contains(partsV[1])) {
-                if (!isPosEmpty(new int[]{pos[0] - move, pos[1] + move}) || isKingCheckMove)
-                    moveAble_temp.add(new int[]{pos[0] - move, pos[1] + move});
-            }
+            if ( pos[0] - move >= 0 && pos[0] - move < 8 && pos[1] + move >= 0 && pos[1] + move < 8)
+                if (!board.pieces[pos[0] - move][pos[1] + move].getTag().toString().contains(partsV[1])) {
+                    if (!isPosEmpty(new int[]{pos[0] - move, pos[1] + move}) || isKingCheckMove)
+                        moveAble_temp.add(new int[]{pos[0] - move, pos[1] + move});
+                }
         }
         else if (v.getTag().toString().contains("knight")) {
             int[] posX = new int[]{-1, 1, 2, 2, 1, -1, -2, -2};
@@ -417,16 +462,18 @@ public class BoardActivity extends AppCompatActivity {
                 ArrayList<int[]> posCanMove = new ArrayList<>();
                 for (int i = 0; i < moveAble_temp.size(); i++) {
                     int[] temp = moveAble_temp.get(i);
+                    Log.v("pawn 2", temp[0]+" "+temp[1]);
                     if (Math.min(temp[0], temp[1]) >= 0 && Math.max(temp[0], temp[1]) < 8)
-                        if (!isCheckMate(v, moveAble_temp.get(i).clone())) {
+                        if (!isSuicide(v, moveAble_temp.get(i).clone())) {
                             posCanMove.add(moveAble_temp.get(i).clone());
-                        }else{
-                            isCheckMate = true;
                         }
+//                    else{
+//                            isCheckMate = true;
+//                        }
                 }
-                if(posCanMove.size() == moveAble_temp.size()){
-                    isCheckMate = false;
-                }
+//                if(posCanMove.size() == moveAble_temp.size()){
+//                    isCheckMate = false;
+//                }
 
                 return posCanMove;
             }catch (Exception ex){ Log.v("Error sth 1", ex.getMessage()+""); }
@@ -499,7 +546,7 @@ public class BoardActivity extends AppCompatActivity {
         return temp;
     }
 
-    private boolean isCheckMate(View v, int[] nextPos){
+    private boolean isSuicide(View v, int[] nextPos){
         String[] partV = v.getTag().toString().split(" ");
         int[] currentPos = ((Piece)v.getTag()).getPos();
 
@@ -533,7 +580,7 @@ public class BoardActivity extends AppCompatActivity {
         try{
             currentOpponent.alive.remove(imgNextPos);
             for(int i = 0; i < currentOpponent.alive.size(); i++){
-                ArrayList<int[]> temp = checkMoveAble(currentOpponent.alive.get(i));
+                ArrayList<int[]> temp = getMoveAble(currentOpponent.alive.get(i));
                 for(int j = 0; j < temp.size(); j++){
                     int[] pos = temp.get(j).clone();
 //                    Log.v("????????????",pos[0]+":"+pos[1]+" "+kingPos[0]+":"+kingPos[1]);
@@ -562,9 +609,35 @@ public class BoardActivity extends AppCompatActivity {
         return false;
     }
 
-    private void addEffectMoveAble(){
-        ImageView v = new ImageView(this);
+    private  boolean isCheckMate(View v){
+        String[] partV = v.getTag().toString().split(" ");
+        Team t = new Team(blackTeam);
+        Team o = new Team(whiteTeam);
+        if(partV[1].equals("white")) {
+            t = new Team(whiteTeam);
+            o = new Team(blackTeam);
+        }
+        try {
+            for (int i = 0; i < t.alive.size(); i++) {
+                isKingCheckMove = true;
 
+                ArrayList<int[]> move = getMoveAble(t.alive.get(i));
+                for (int j = 0; j < move.size(); j++) {
+                    int[] temp = move.get(j);
+                    int[] temp2 = ((Piece)o.alive.get(0).getTag()).getPos();
+                    if(Arrays.equals(temp, temp2))
+                        return true;
+                }
+            }
+        }
+        catch (Exception ex){  Log.v("Error sth 3", ex.getMessage()+""); }
+        finally {
+            isKingCheckMove = false;
+        }
+        return false;
+    }
+
+    private void addEffectMoveAble(){
         //reset effect array
         for(int i = 0; i < 8; i++){
             for(int j = 0; j < 8; j++){
@@ -575,15 +648,23 @@ public class BoardActivity extends AppCompatActivity {
             int[] pos = moveAble.get(i);
             board.effect[pos[0]][pos[1]].setBackgroundColor(Color.parseColor("#85aff2"));
         }
+    }
 
-        if(false){
-            String[] partLast = spAct.lastPieceMove.split(" ");
-            int[] kingPos = ((Piece) blackTeam.alive.get(0).getTag()).getPos();
-            if(partLast[1].equals("black")){
-                kingPos = ((Piece) whiteTeam.alive.get(0).getTag()).getPos();
+    private void addEffectCheckMate(){
+        //reset effect array
+        for(int i = 0; i < 8; i++){
+            for(int j = 0; j < 8; j++){
+                board.effect[i][j] = createEmptyView();
             }
-
-            board.effect[kingPos[0]][kingPos[1]].setBackgroundColor(Color.parseColor("#cf213e"));
         }
+
+        String[] partLast = spAct.lastPieceMove.split(" ");
+        int[] kingPos = ((Piece) blackTeam.alive.get(0).getTag()).getPos();
+        if(partLast[1].equals("black")){
+            kingPos = ((Piece) whiteTeam.alive.get(0).getTag()).getPos();
+        }
+
+        board.effect[kingPos[0]][kingPos[1]].setBackgroundColor(Color.parseColor("#cf213e"));
+        Log.v("add check mate effect", "added");
     }
 }
