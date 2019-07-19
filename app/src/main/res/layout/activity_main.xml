@@ -18,8 +18,6 @@
         app:layout_constraintTop_toTopOf="parent"/>
 
 
-
-
     <GridLayout xmlns:android="http://schemas.android.com/apk/res/android"
         android:id="@+id/rootContainer"
         android:layout_width="match_parent"

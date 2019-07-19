@@ -6,15 +6,12 @@ import android.widget.ImageView;
 public class Board {
     ImageView[][] layout;
     ImageView[][] pieces;
+    ImageView[][] effect;
 
     public Board(){
         layout = new ImageView[8][8];
         pieces = new ImageView[8][8];
-    }
-
-    public Board(Board b){
-        this.layout = b.layout.clone();
-        pieces = clonePieces(b.pieces);
+        effect = new ImageView[8][8];
     }
 
     public void swap(int[] currentPos, int[] newPos) {
