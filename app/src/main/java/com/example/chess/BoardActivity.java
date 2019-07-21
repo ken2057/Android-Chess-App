@@ -28,6 +28,7 @@ public class BoardActivity extends AppCompatActivity {
 
     boolean isKingCheckMove = false;
     boolean isCheckMate = false;
+    ArrayList<int[]> posNhapThanh = new ArrayList<>();
     //Toast.makeText(BoardActivity.this, (char) (pos[0] + 65) + "" + (pos[1] + 1) + " " + v.getTag(), Toast.LENGTH_SHORT).show();
 
     @Override
@@ -146,7 +147,7 @@ public class BoardActivity extends AppCompatActivity {
 
                     int[] posNew = ((Piece)v.getTag()).getPos();
                     int[] posOld = ((Piece)imgView.getTag()).getPos();
-
+                    //check khong thay doi vi tri
                     boolean flag = false;
                     for (int i = 0; i < moveAble.size(); i++) {
                         if (Arrays.equals(posNew, moveAble.get(i))) {
@@ -154,6 +155,7 @@ public class BoardActivity extends AppCompatActivity {
                             break;
                         }
                     }
+
                     Log.v("DROP EMPTY", posNew[0] + " " + posNew[1]);
                     if (flag) {
                         //an tot qua duong
@@ -174,6 +176,38 @@ public class BoardActivity extends AppCompatActivity {
                             spAct.setTotQuaDuongAt(new int[]{-1, -1});
                         }
                         spAct.setLastPieceMove(board.pieces[posOld[0]][posOld[1]].getTag().toString());
+
+                        //nhap thanh
+                        for(int i = 0; i < posNhapThanh.size(); i++){
+                            Log.v("nhap thanh", posNhapThanh.get(i)[0]+":"+posNhapThanh.get(i)[1]+" - "+posNew[0]+":"+posNew[1]);
+                            int[] posNhap = posNhapThanh.get(i);
+                            if(Arrays.equals(posNhap, posNew)){
+                                ImageView rook = createEmptyView();
+                                int[] posSwap = new int[]{posOld[0],-1};
+                                //left
+                                if(posNhap[1] - posOld[1] < 0){
+                                    rook = board.pieces[posOld[0]][0];
+                                    posSwap[1] = posNew[1]+1;
+                                }
+                                //right
+                                else{
+                                    rook = board.pieces[posOld[0]][7];
+                                    posSwap[1] = posNew[1]-1;
+                                }
+
+                                //swap xe
+
+                                Piece p = (Piece) rook.getTag();
+                                p.setMoved();
+                                rook.setTag(p);
+                                int[] rookPos = ((Piece)rook.getTag()).getPos();
+                                Log.v("clgt", posSwap[0]+":"+posSwap[1]+" - "+rookPos[0]+":"+rookPos[1]);
+                                board.swap(posSwap,  rookPos);
+
+                                break;
+                            }
+                        }
+
 
                         Log.v("LAST PIECE MOVED", spAct.getLastPieceMove());
                         spAct.setLastPiecePos(posOld);
@@ -364,6 +398,8 @@ public class BoardActivity extends AppCompatActivity {
     }
 
     private ArrayList<int[]> getMoveAble(View v) {
+        if(!isKingCheckMove)
+            posNhapThanh = new ArrayList<>();
         ArrayList<int[]> moveAble_temp = new ArrayList<>();
         int[] pos = ((Piece)v.getTag()).getPos();
         int move = v.getTag().toString().contains("white") ? 1 : -1;
@@ -443,17 +479,48 @@ public class BoardActivity extends AppCompatActivity {
             moveAble_temp.addAll(moveXeo(v));
         }
         else if (v.getTag().toString().contains("king")) {
-            int[] posX = new int[]{-1, -1, -1,  0, 0,  1, 1, 1};
-            int[] posY = new int[]{-1,  0,  1, -1, 1, -1, 0, 1};
+            int[] posX = new int[]{-1, -1, -1, 0, 0, 1, 1, 1};
+            int[] posY = new int[]{-1, 0, 1, -1, 1, -1, 0, 1};
 
-            for(int i = 0; i < posX.length; i++){
+            for (int i = 0; i < posX.length; i++) {
                 posX[i] += pos[0];
                 posY[i] += pos[1];
 
-                if(Math.min(posX[i], posY[i]) >= 0
+                if (Math.min(posX[i], posY[i]) >= 0
                         && Math.max(posX[i], posY[i]) < 8
                         && !board.pieces[posX[i]][posY[i]].getTag().toString().contains(partsV[1]))
-                    moveAble_temp.add(new int[]{ posX[i], posY[i] });
+                    moveAble_temp.add(new int[]{posX[i], posY[i]});
+            }
+            //nhap thanh
+            if (!isCheckMate && !((Piece) board.pieces[pos[0]][pos[1]].getTag()).isMoved && !isKingCheckMove) {
+                //left
+                for (int l = pos[1]-1; l >= 0; l--) {
+                    boolean isNull = board.pieces[pos[0]][l].getTag().toString().contains("null");
+                    if (!isNull) {
+                        boolean isTeam = board.pieces[pos[0]][l].getTag().toString().contains(partsV[1]);
+                        boolean isMoved = ((Piece) board.pieces[pos[0]][l].getTag()).isMoved;
+                        boolean isRook = board.pieces[pos[0]][l].getTag().toString().contains("rook");
+                        if (isTeam && !isMoved && isRook) {
+                            moveAble_temp.add(new int[]{pos[0], pos[1] - 2});
+                            posNhapThanh.add(new int[]{pos[0], pos[1] - 2});
+                        } else
+                            break;
+                    }
+                }
+                //right
+                for (int l = pos[1]+1; l < 8; l++) {
+                    boolean isNull = board.pieces[pos[0]][l].getTag().toString().contains("null");
+                    if (!isNull) {
+                        boolean isTeam = board.pieces[pos[0]][l].getTag().toString().contains(partsV[1]);
+                        boolean isMoved = ((Piece) board.pieces[pos[0]][l].getTag()).isMoved;
+                        boolean isRook = board.pieces[pos[0]][l].getTag().toString().contains("rook");
+                        if (isTeam && !isMoved && isRook) {
+                            moveAble_temp.add(new int[]{pos[0], pos[1] + 2});
+                            posNhapThanh.add(new int[]{pos[0], pos[1] + 2});
+                        } else
+                            break;
+                    }
+                }
             }
         }
         if(!isKingCheckMove) {
