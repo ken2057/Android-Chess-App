@@ -2,12 +2,18 @@ package com.example.chess;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.MenuInflater;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
+import android.widget.PopupWindow;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 import android.view.View;
@@ -29,8 +35,10 @@ public class MainActivity extends AppCompatActivity {
         startActivityForResult(myIntent, 0);
     }
 
-    private void createBoard(View v){
-
-
+    public void onClickBtnPopup(View v){
+        PopupMenu popup = new PopupMenu(this, v);
+        MenuInflater inflater = popup.getMenuInflater();
+        inflater.inflate(R.menu.menu_pawn_evole , popup.getMenu());
+        popup.show();
     }
 }

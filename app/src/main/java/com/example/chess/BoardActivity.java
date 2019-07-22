@@ -6,11 +6,16 @@ import android.media.Image;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.DragEvent;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.MenuInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.GridLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
+import android.widget.PopupWindow;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -26,6 +31,8 @@ public class BoardActivity extends AppCompatActivity {
     Team whiteTeam = new Team();
     SpecialAction spAct = new SpecialAction();
 
+    PopupWindow popUp;
+
     boolean isKingCheckMove = false;
     boolean isCheckMate = false;
     ArrayList<int[]> posNhapThanh = new ArrayList<>();
@@ -38,6 +45,13 @@ public class BoardActivity extends AppCompatActivity {
 
         createEmptyBoard();
         setupBoard();
+    }
+
+    private void createPopup(View v){
+        PopupMenu popup = new PopupMenu(this, v);
+        MenuInflater inflater = popup.getMenuInflater();
+        inflater.inflate(R.menu.menu_pawn_evole , popup.getMenu());
+        popup.show();
     }
 
     private ImageView addCommonEvent(ImageView img) {
@@ -80,6 +94,11 @@ public class BoardActivity extends AppCompatActivity {
 
                         spAct.setLastPiecePos(posOld);
                         spAct.setCurrentLastMovePiecePos(posNew);
+
+
+                        if((posNew[0] == 0 || posNew[0] == 7) && imgView.getTag().toString().contains("pawn")){
+                            createPopup(v);
+                        }
 
                         ImageView emptyView = createEmptyView();
                         emptyView.setTag(new Piece("null", posNew));
@@ -208,6 +227,11 @@ public class BoardActivity extends AppCompatActivity {
                             }
                         }
 
+                        Log.v("Pawn", posNew[0]+"");
+                        if((posNew[0] == 0 || posNew[0] == 7) && imgView.getTag().toString().contains("pawn")){
+                            Log.v("Pawn evolve", posNew[0]+":"+posNew[1]);
+                            createPopup(v);
+                        }
 
                         Log.v("LAST PIECE MOVED", spAct.getLastPieceMove());
                         spAct.setLastPiecePos(posOld);
