@@ -38,10 +38,21 @@ public class SpecialAction {
     int[] currentLastMovePiecePos;
     int[] totQuaDuongAt;
 
+    public int[] getLastKillPos() {
+        return lastKillPos;
+    }
+
+    public void setLastKillPos(int[] lastKillPos) {
+        this.lastKillPos = lastKillPos;
+    }
+
+    int[] lastKillPos;
+
     public SpecialAction(){
         lastPieceMove = "";
         lastPiecePos = new int[]{-1, -1};
         currentLastMovePiecePos = new int[]{-1, -1};
         totQuaDuongAt = new int[]{-1, -1};
+        lastKillPos = new int[]{-1, -1};
     }
 }

@@ -9,8 +9,6 @@
     tools:context=".BoardActivity"
     android:id="@+id/mainScreen">
 
-
-
     <GridLayout
         android:id="@+id/gridBoard"
         android:layout_width="match_parent"

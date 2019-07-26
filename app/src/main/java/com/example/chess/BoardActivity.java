@@ -1,26 +1,52 @@
 package com.example.chess;
 
 import android.content.ClipData;
+import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.media.Image;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.CountDownTimer;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.DragEvent;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
 import android.widget.GridLayout;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.PopupWindow;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+
+import javax.net.ssl.HttpsURLConnection;
 
 
 public class BoardActivity extends AppCompatActivity {
@@ -31,27 +57,167 @@ public class BoardActivity extends AppCompatActivity {
     Team whiteTeam = new Team();
     SpecialAction spAct = new SpecialAction();
 
-    PopupWindow popUp;
+    Object lock = new Object();
+    Thread thrCheckMoved;
 
+    int numMove = 0;
+
+    boolean isWhite;
+    boolean isEvolve = false;
     boolean isKingCheckMove = false;
     boolean isCheckMate = false;
-    ArrayList<int[]> posNhapThanh = new ArrayList<>();
+    boolean isWaitingMove = false;
+    boolean isOpponentOnline = true;
+    boolean isCheckMoved = false;
+    ArrayList<int[]> posCastling = new ArrayList<>();
     //Toast.makeText(BoardActivity.this, (char) (pos[0] + 65) + "" + (pos[1] + 1) + " " + v.getTag(), Toast.LENGTH_SHORT).show();
+    String pawnEvolveTo = "";
+    String androidId;
+    String matchId;
+    String url;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.board);
 
+        getDataFromIntent();
+
         createEmptyBoard();
         setupBoard();
+
+        createThreadCheckMoved();
     }
 
-    private void createPopup(View v){
-        PopupMenu popup = new PopupMenu(this, v);
-        MenuInflater inflater = popup.getMenuInflater();
-        inflater.inflate(R.menu.menu_pawn_evole , popup.getMenu());
-        popup.show();
+    private void getDataFromIntent(){
+        Intent intent = getIntent();
+        isWhite = intent.getBooleanExtra("isWhite", true);
+        androidId = intent.getStringExtra("androidId");
+        matchId = intent.getStringExtra("matchId");
+        url = intent.getStringExtra("url");
+        isWaitingMove = !isWhite;
+    }
+
+    private void createPopupPawnEvolve(View v) {
+        isEvolve = true;
+        final String[] partV = v.getTag().toString().split(" ");
+
+        LayoutInflater layoutInflater = (LayoutInflater) BoardActivity.this.getSystemService(LAYOUT_INFLATER_SERVICE);
+        final View customView = layoutInflater.inflate(R.layout.activity_test,null);
+
+        //instantiate popup window
+        final PopupWindow popupWindow = new PopupWindow(customView, GridLayout.LayoutParams.WRAP_CONTENT, GridLayout.LayoutParams.WRAP_CONTENT);
+
+        //display the popup window
+//        popupWindow.showAtLocation(BoardActivity, Gravity.CENTER, 0, 0);
+        popupWindow.showAtLocation(v,Gravity.CENTER, 0, 0);
+        popupWindow.setOutsideTouchable(false);
+        popupWindow.setFocusable(true);
+
+        ImageButton imgB1 = customView.findViewById(R.id.imgBtn1);
+        ImageButton imgB2 = customView.findViewById(R.id.imgBtn2);
+        ImageButton imgB3 = customView.findViewById(R.id.imgBtn3);
+        ImageButton imgB4 = customView.findViewById(R.id.imgBtn4);
+
+        if(partV[1].equals("white")){
+            imgB1.setBackgroundResource(R.drawable.white_bishop);
+            imgB2.setBackgroundResource(R.drawable.white_knight);
+            imgB3.setBackgroundResource(R.drawable.white_rook);
+            imgB4.setBackgroundResource(R.drawable.white_queen);
+        }else{
+            imgB1.setBackgroundResource(R.drawable.black_bishop);
+            imgB2.setBackgroundResource(R.drawable.black_knight);
+            imgB3.setBackgroundResource(R.drawable.black_rook);
+            imgB4.setBackgroundResource(R.drawable.black_queen);
+        }
+
+        imgB1.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Log.v("image button", view.getId()+"");
+                popupWindow.dismiss();
+                isEvolve = false;
+                pawnEvolveTo = "bishop "+partV[1];
+                pawnEvolve();
+            }
+        });
+        imgB2.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Log.v("image button", view.getId()+"");
+                popupWindow.dismiss();
+                isEvolve = false;
+                pawnEvolveTo = "knight "+partV[1];
+                pawnEvolve();
+            }
+        });
+        imgB3.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Log.v("image button", view.getId()+"");
+                popupWindow.dismiss();
+                isEvolve = false;
+                pawnEvolveTo = "rook "+partV[1];
+                pawnEvolve();
+            }
+        });
+        imgB4.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Log.v("image button", view.getId()+"");
+                popupWindow.dismiss();
+                isEvolve = false;
+                pawnEvolveTo = "queen "+partV[1];
+                pawnEvolve();
+            }
+        });
+
+        popupWindow.setFocusable(true);
+    }
+
+    private void pawnEvolve(){
+        int[] temp = spAct.currentLastMovePiecePos;
+        Piece p = (Piece)board.pieces[temp[0]][temp[1]].getTag();
+        p.name = pawnEvolveTo;
+        board.pieces[temp[0]][temp[1]].setTag(p);
+
+        String[] partName = pawnEvolveTo.split(" ");
+        pawnEvolveTo = "";
+
+        if(partName[1].equals("white")){
+            switch (partName[0]) {
+                case "knight":
+                    board.pieces[temp[0]][temp[1]].setBackgroundResource(R.drawable.white_knight);
+                    break;
+                case "bishop":
+                    board.pieces[temp[0]][temp[1]].setBackgroundResource(R.drawable.white_bishop);
+                    break;
+                case "rook":
+                    board.pieces[temp[0]][temp[1]].setBackgroundResource(R.drawable.white_rook);
+                    break;
+                case "queen":
+                    board.pieces[temp[0]][temp[1]].setBackgroundResource(R.drawable.white_queen);
+                    break;
+            }
+        }else{
+            switch (partName[0]) {
+                case "knight":
+                    board.pieces[temp[0]][temp[1]].setBackgroundResource(R.drawable.black_knight);
+                    break;
+                case "bishop":
+                    board.pieces[temp[0]][temp[1]].setBackgroundResource(R.drawable.black_bishop);
+                    break;
+                case "rook":
+                    board.pieces[temp[0]][temp[1]].setBackgroundResource(R.drawable.black_rook);
+                    break;
+                case "queen":
+                    board.pieces[temp[0]][temp[1]].setBackgroundResource(R.drawable.black_queen);
+                    break;
+            }
+        }
+
+        isCheckMate = isCheckMate(board.pieces[temp[0]][temp[1]]);
+        reDraw();
     }
 
     private ImageView addCommonEvent(ImageView img) {
@@ -61,15 +227,16 @@ public class BoardActivity extends AppCompatActivity {
         img.setLayoutParams(lp);
         img.setClickable(true);
 
+
         img.setOnDragListener(new View.OnDragListener() {
             @Override
             public boolean onDrag(View v, DragEvent e) {
+
                 if (e.getAction() == DragEvent.ACTION_DROP) {
                     GridLayout gridEffect = findViewById(R.id.gridEffect);
                     ImageView imgView = (ImageView) e.getLocalState();
-                    Log.v("???", v.getTag()+" "+imgView.getTag());
-                    int[] posNew = ((Piece)v.getTag()).getPos();
-                    int[] posOld = ((Piece)imgView.getTag()).getPos();
+                    int[] posNew = ((Piece) v.getTag()).getPos();
+                    int[] posOld = ((Piece) imgView.getTag()).getPos();
                     boolean flag = false;
                     for (int i = 0; i < moveAble.size(); i++) {
                         if (Arrays.equals(posNew, moveAble.get(i))) {
@@ -82,11 +249,11 @@ public class BoardActivity extends AppCompatActivity {
                         if (board.pieces[posNew[0]][posNew[1]].getTag().toString().contains("black")) {
                             whiteTeam.kill.add(board.pieces[posNew[0]][posNew[1]]);
                             blackTeam.alive.remove(board.pieces[posNew[0]][posNew[1]]);
-                        }
-                        else {
+                        } else {
                             blackTeam.kill.add(board.pieces[posNew[0]][posNew[1]]);
                             whiteTeam.alive.remove(board.pieces[posNew[0]][posNew[1]]);
                         }
+                        spAct.setLastKillPos(posNew);
 
                         spAct.setLastPieceMove(board.pieces[posOld[0]][posOld[1]].getTag().toString());
 
@@ -96,15 +263,15 @@ public class BoardActivity extends AppCompatActivity {
                         spAct.setCurrentLastMovePiecePos(posNew);
 
 
-                        if((posNew[0] == 0 || posNew[0] == 7) && imgView.getTag().toString().contains("pawn")){
-                            createPopup(v);
+                        if ((posNew[0] == 0 || posNew[0] == 7) && imgView.getTag().toString().contains("pawn")) {
+                            Log.v("Pawn evolve", posNew[0] + ":" + posNew[1]);
+                            createPopupPawnEvolve(imgView);
                         }
 
-                        ImageView emptyView = createEmptyView();
-                        emptyView.setTag(new Piece("null", posNew));
+                        ImageView emptyView = createEmptyView(posNew);
                         board.pieces[posNew[0]][posNew[1]] = emptyView;
 
-                        Piece p = ((Piece)board.pieces[posOld[0]][posOld[1]].getTag());
+                        Piece p = ((Piece) board.pieces[posOld[0]][posOld[1]].getTag());
                         p.setMoved();
                         board.pieces[posOld[0]][posOld[1]].setTag(p);
 
@@ -113,10 +280,10 @@ public class BoardActivity extends AppCompatActivity {
                         isCheckMate = isCheckMate(board.pieces[posNew[0]][posNew[1]]);
 
                         reDraw();
-                    }
-                    else{
+                    } else {
+                        spAct.setLastKillPos(new int[]{-1, -1});
                         gridEffect.removeAllViewsInLayout();
-                        if(isCheckMate) {
+                        if (isCheckMate) {
                             moveAble = new ArrayList<>();
                             reDrawEffect();
                         }
@@ -127,35 +294,41 @@ public class BoardActivity extends AppCompatActivity {
             }
         });
 
-        img.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    int[] pos = getPositionArr(v);
+        if(isWhite == img.getTag().toString().contains("white")) {
 
-                    ClipData data = ClipData.newPlainText("", "");
-                    View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(v);
-                    v.startDragAndDrop(data, shadowBuilder, v, 0);
+            img.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                        if (isEvolve || isWaitingMove)
+                            return false;
 
-                    moveAble = getMoveAble(v);
-                    for (int i = 0; i < moveAble.size(); i++) {
-                        int[] temp = moveAble.get(i);
-                        Log.v("moveAble", temp[0] + " " + temp[1]);
+                        ClipData data = ClipData.newPlainText("", "");
+                        View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(v);
+                        v.startDragAndDrop(data, shadowBuilder, v, 0);
+
+//                        moveAble = getMoveAble(v);
+//                        for (int i = 0; i < moveAble.size(); i++) {
+//                            int[] temp = moveAble.get(i);
+//                            Log.v("moveAble", temp[0] + " " + temp[1]);
+//                        }
+//                        addEffectMoveAble();
+//                        reDrawEffect();
+                        new GetPostMoveAble().execute(v);
                     }
-                    addEffectMoveAble();
-                    reDrawEffect();
+                    return true;
                 }
-                return true;
-            }
-        });
+            });
+        }
         return img;
     }
 
-    private ImageView createEmptyView() {
+    private ImageView createEmptyView(int[] pos) {
         final ImageView img = new ImageView(this);
         img.setBackgroundResource(R.drawable.empty);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(125, 125);
         img.setLayoutParams(lp);
+        img.setTag(new Piece("null", new int[]{pos[0], pos[1]}));
 
         img.setOnDragListener(new View.OnDragListener() {
             @Override
@@ -164,8 +337,8 @@ public class BoardActivity extends AppCompatActivity {
                     GridLayout gridEffect = findViewById(R.id.gridEffect);
                     ImageView imgView = (ImageView) e.getLocalState();
 
-                    int[] posNew = ((Piece)v.getTag()).getPos();
-                    int[] posOld = ((Piece)imgView.getTag()).getPos();
+                    int[] posNew = ((Piece) v.getTag()).getPos();
+                    int[] posOld = ((Piece) imgView.getTag()).getPos();
                     //check khong thay doi vi tri
                     boolean flag = false;
                     for (int i = 0; i < moveAble.size(); i++) {
@@ -183,61 +356,62 @@ public class BoardActivity extends AppCompatActivity {
                             if (board.pieces[temp[0]][temp[1]].getTag().toString().contains("black")) {
                                 whiteTeam.kill.add(board.pieces[temp[0]][temp[1]]);
                                 blackTeam.alive.remove(board.pieces[temp[0]][temp[1]]);
-                            }
-                            else {
+                            } else {
                                 blackTeam.kill.add(board.pieces[temp[0]][temp[1]]);
                                 whiteTeam.alive.remove(board.pieces[temp[0]][temp[1]]);
                             }
-                            ImageView imgTemp = createEmptyView();
-                            imgTemp.setTag(new Piece("null", temp));
+                            spAct.setLastKillPos(temp);
+
+                            ImageView imgTemp = createEmptyView(temp);
                             board.pieces[temp[0]][temp[1]] = imgTemp;
 
                             spAct.setTotQuaDuongAt(new int[]{-1, -1});
+                        }else{
+                            spAct.setLastKillPos(new int[]{-1, -1});
                         }
                         spAct.setLastPieceMove(board.pieces[posOld[0]][posOld[1]].getTag().toString());
 
                         //nhap thanh
-                        for(int i = 0; i < posNhapThanh.size(); i++){
-                            Log.v("nhap thanh", posNhapThanh.get(i)[0]+":"+posNhapThanh.get(i)[1]+" - "+posNew[0]+":"+posNew[1]);
-                            int[] posNhap = posNhapThanh.get(i);
-                            if(Arrays.equals(posNhap, posNew)){
-                                ImageView rook = createEmptyView();
-                                int[] posSwap = new int[]{posOld[0],-1};
+                        for (int i = 0; i < posCastling.size(); i++) {
+                            Log.v("nhap thanh", posCastling.get(i)[0] + ":" + posCastling.get(i)[1] + " - " + posNew[0] + ":" + posNew[1]);
+                            int[] posNhap = posCastling.get(i);
+                            if (Arrays.equals(posNhap, posNew)) {
+                                ImageView rook = new ImageView(BoardActivity.this);
+                                int[] posSwap = new int[]{posOld[0], -1};
                                 //left
-                                if(posNhap[1] - posOld[1] < 0){
+                                if (posNhap[1] - posOld[1] < 0) {
                                     rook = board.pieces[posOld[0]][0];
-                                    posSwap[1] = posNew[1]+1;
+                                    posSwap[1] = posNew[1] + 1;
                                 }
                                 //right
-                                else{
+                                else {
                                     rook = board.pieces[posOld[0]][7];
-                                    posSwap[1] = posNew[1]-1;
+                                    posSwap[1] = posNew[1] - 1;
                                 }
 
                                 //swap xe
-
                                 Piece p = (Piece) rook.getTag();
                                 p.setMoved();
                                 rook.setTag(p);
-                                int[] rookPos = ((Piece)rook.getTag()).getPos();
-                                Log.v("clgt", posSwap[0]+":"+posSwap[1]+" - "+rookPos[0]+":"+rookPos[1]);
-                                board.swap(posSwap,  rookPos);
+                                int[] rookPos = ((Piece) rook.getTag()).getPos();
+                                Log.v("clgt", posSwap[0] + ":" + posSwap[1] + " - " + rookPos[0] + ":" + rookPos[1]);
+                                board.swap(posSwap, rookPos);
 
                                 break;
                             }
                         }
 
-                        Log.v("Pawn", posNew[0]+"");
-                        if((posNew[0] == 0 || posNew[0] == 7) && imgView.getTag().toString().contains("pawn")){
-                            Log.v("Pawn evolve", posNew[0]+":"+posNew[1]);
-                            createPopup(v);
+                        Log.v("Pawn", posNew[0] + "");
+                        if ((posNew[0] == 0 || posNew[0] == 7) && imgView.getTag().toString().contains("pawn")) {
+                            Log.v("Pawn evolve", posNew[0] + ":" + posNew[1]);
+                            createPopupPawnEvolve(imgView);
                         }
 
                         Log.v("LAST PIECE MOVED", spAct.getLastPieceMove());
                         spAct.setLastPiecePos(posOld);
                         spAct.setCurrentLastMovePiecePos(posNew);
 
-                        Piece p = ((Piece)board.pieces[posOld[0]][posOld[1]].getTag());
+                        Piece p = ((Piece) board.pieces[posOld[0]][posOld[1]].getTag());
                         p.setMoved();
                         board.pieces[posOld[0]][posOld[1]].setTag(p);
 
@@ -246,13 +420,11 @@ public class BoardActivity extends AppCompatActivity {
                         isCheckMate = isCheckMate(board.pieces[posNew[0]][posNew[1]]);
 
                         reDraw();
-                    }
-                    else {
-                        if(!isCheckMate)
+                    } else {
+                        if (!isCheckMate)
                             gridEffect.removeAllViewsInLayout();
                     }
                 }
-
                 return true;
             }
         });
@@ -265,20 +437,32 @@ public class BoardActivity extends AppCompatActivity {
                 R.drawable.black_bishop, R.drawable.black_knight, R.drawable.black_rook};
         int[] whiteOrder = new int[]{R.drawable.white_rook, R.drawable.white_knight, R.drawable.white_bishop, R.drawable.white_queen, R.drawable.white_king,
                 R.drawable.white_bishop, R.drawable.white_knight, R.drawable.white_rook};
+
         String[] nameOrder = new String[]{"rook", "knight", "bishop", "queen", "king", "bishop", "knight", "rook"};
+
+        if(!isWhite) {
+            blackOrder = new int[]{R.drawable.black_rook, R.drawable.black_knight, R.drawable.black_bishop, R.drawable.black_king, R.drawable.black_queen,
+                    R.drawable.black_bishop, R.drawable.black_knight, R.drawable.black_rook};
+            whiteOrder = new int[]{R.drawable.white_rook, R.drawable.white_knight, R.drawable.white_bishop, R.drawable.white_king, R.drawable.white_queen,
+                    R.drawable.white_bishop, R.drawable.white_knight, R.drawable.white_rook};
+
+            nameOrder = new String[]{"rook", "knight", "bishop", "king", "queen", "bishop", "knight", "rook"};
+        }
+        int[] player = isWhite ? new int[]{0, 1, 6, 7}: new int[]{7,6,1,0};
+
         //black
         for (int i = 0; i < 8; i++) {
             ImageView img = new ImageView(this);
             img.setBackgroundResource(blackOrder[i]);
-            img.setTag(new Piece(nameOrder[i] + " black", new int[]{0, i} ));
+            img.setTag(new Piece(nameOrder[i] + " black", new int[]{player[0], i} ));
             img = addCommonEvent(img);
-            board.pieces[0][i] = img;
+            board.pieces[player[0]][i] = img;
 
             ImageView imgPawn = new ImageView(this);
             imgPawn.setBackgroundResource(R.drawable.black_pawn);
-            imgPawn.setTag(new Piece("pawn black", new int[]{1, i} ));
+            imgPawn.setTag(new Piece("pawn black", new int[]{player[1], i} ));
             imgPawn = addCommonEvent(imgPawn);
-            board.pieces[1][i] = imgPawn;
+            board.pieces[player[1]][i] = imgPawn;
 
             if(img.getTag().toString().contains("king"))
                 blackTeam.alive.add(0, img);
@@ -291,15 +475,15 @@ public class BoardActivity extends AppCompatActivity {
         for (int i = 0; i < 8; i++) {
             ImageView img = new ImageView(this);
             img.setBackgroundResource(whiteOrder[i]);
-            img.setTag(new Piece(nameOrder[i] + " white", new int[]{7, i} ));
+            img.setTag(new Piece(nameOrder[i] + " white", new int[]{player[3], i} ));
             img = addCommonEvent(img);
-            board.pieces[7][i] = img;
+            board.pieces[player[3]][i] = img;
 
             ImageView imgPawn = new ImageView(this);
             imgPawn.setBackgroundResource(R.drawable.white_pawn);
-            imgPawn.setTag(new Piece("pawn white", new int[]{6, i} ));
+            imgPawn.setTag(new Piece("pawn white", new int[]{player[2], i} ));
             imgPawn = addCommonEvent(imgPawn);
-            board.pieces[6][i] = imgPawn;
+            board.pieces[player[2]][i] = imgPawn;
 
             if(img.getTag().toString().contains("king"))
                 whiteTeam.alive.add(0, img);
@@ -318,21 +502,22 @@ public class BoardActivity extends AppCompatActivity {
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
                 ImageView imgView = new ImageView(this);
-                if ((i + j) % 2 == 0)
-                    imgView.setBackgroundResource(R.drawable.rec_white);
-                else
+
+                if ((i + j) % 2 == 1)
                     imgView.setBackgroundResource(R.drawable.rec_black);
+                else
+                    imgView.setBackgroundResource(R.drawable.rec_white);
+
 
                 int size = 125;
                 imgView.setMinimumHeight(size);
                 imgView.setMinimumWidth(size);
                 board.layout[i][j] = imgView;
 
-                ImageView img = createEmptyView();
-                img.setTag(new Piece("null", new int[]{i,j}));
+                ImageView img = createEmptyView(new int[]{i, j});
                 board.pieces[i][j] = img;
 
-                board.effect[i][j] = createEmptyView();
+                board.effect[i][j] = createEmptyView(new int[]{-1, -1});
 
                 gridEffect.addView(board.effect[i][j]);
                 gridBoard.addView(imgView);
@@ -368,6 +553,12 @@ public class BoardActivity extends AppCompatActivity {
             }
             Log.v("BLACK ALIVE/KILL", blackTeam.alive.size() + "/" + blackTeam.kill.size());
             Log.v("WHITE ALIVE/KILL", whiteTeam.alive.size() + "/" + whiteTeam.kill.size());
+            Log.v("TEST_TEMP", pawnEvolveTo);
+            if(!isWaitingMove && !Arrays.equals(spAct.lastPiecePos, spAct.currentLastMovePiecePos)) {
+                isWaitingMove = true;
+                numMove++;
+                new PostSendMove().execute(url);
+            }
         }
     }
 
@@ -381,7 +572,7 @@ public class BoardActivity extends AppCompatActivity {
             if(!partV[1].equals("white"))
                 t = new Team(whiteTeam);
             kingPos = ((Piece)t.alive.get(0).getTag()).getPos();
-            board.effect[kingPos[0]][kingPos[1]] = createEmptyView();
+            board.effect[kingPos[0]][kingPos[1]] = createEmptyView(new int[]{-1, -1});
             board.effect[kingPos[0]][kingPos[1]].setBackgroundColor(Color.parseColor("#cf213e"));
         }
 
@@ -394,7 +585,7 @@ public class BoardActivity extends AppCompatActivity {
                         if (Arrays.equals(kingPos, new int[]{i,j}))
                             gridEffect.addView(board.effect[i][j]);
                         else
-                            gridEffect.addView(createEmptyView());
+                            gridEffect.addView(createEmptyView(new int[]{-1, -1}));
                     }
                 }
             }
@@ -423,10 +614,12 @@ public class BoardActivity extends AppCompatActivity {
 
     private ArrayList<int[]> getMoveAble(View v) {
         if(!isKingCheckMove)
-            posNhapThanh = new ArrayList<>();
+            posCastling = new ArrayList<>();
         ArrayList<int[]> moveAble_temp = new ArrayList<>();
         int[] pos = ((Piece)v.getTag()).getPos();
         int move = v.getTag().toString().contains("white") ? 1 : -1;
+        if(!isWhite)
+            move*=-1;
         String[] partsV = v.getTag().toString().split(" ");
 
         if (v.getTag().toString().contains("pawn")) {
@@ -526,7 +719,7 @@ public class BoardActivity extends AppCompatActivity {
                         boolean isRook = board.pieces[pos[0]][l].getTag().toString().contains("rook");
                         if (isTeam && !isMoved && isRook) {
                             moveAble_temp.add(new int[]{pos[0], pos[1] - 2});
-                            posNhapThanh.add(new int[]{pos[0], pos[1] - 2});
+                            posCastling.add(new int[]{pos[0], pos[1] - 2});
                         } else
                             break;
                     }
@@ -540,7 +733,7 @@ public class BoardActivity extends AppCompatActivity {
                         boolean isRook = board.pieces[pos[0]][l].getTag().toString().contains("rook");
                         if (isTeam && !isMoved && isRook) {
                             moveAble_temp.add(new int[]{pos[0], pos[1] + 2});
-                            posNhapThanh.add(new int[]{pos[0], pos[1] + 2});
+                            posCastling.add(new int[]{pos[0], pos[1] + 2});
                         } else
                             break;
                     }
@@ -653,8 +846,7 @@ public class BoardActivity extends AppCompatActivity {
         Piece p = (Piece)imgNextPos.getTag();
         p.setPos(((Piece)board.pieces[currentPos[0]][currentPos[1]].getTag()).getPos());
 
-        ImageView emptyImg = createEmptyView();
-        emptyImg.setTag(new Piece("null", nextPos));
+        ImageView emptyImg = createEmptyView(nextPos);
         board.pieces[nextPos[0]][nextPos[1]] = emptyImg;
         board.swap(currentPos, nextPos);
 
@@ -732,7 +924,7 @@ public class BoardActivity extends AppCompatActivity {
         //reset effect array
         for(int i = 0; i < 8; i++){
             for(int j = 0; j < 8; j++){
-                board.effect[i][j] = createEmptyView();
+                board.effect[i][j] = createEmptyView(new int[]{-1, -1});
             }
         }
         for(int i = 0; i < moveAble.size(); i++){
@@ -745,7 +937,7 @@ public class BoardActivity extends AppCompatActivity {
         //reset effect array
         for(int i = 0; i < 8; i++){
             for(int j = 0; j < 8; j++){
-                board.effect[i][j] = createEmptyView();
+                board.effect[i][j] = createEmptyView(new int[]{-1, -1});
             }
         }
 
@@ -758,4 +950,205 @@ public class BoardActivity extends AppCompatActivity {
         board.effect[kingPos[0]][kingPos[1]].setBackgroundColor(Color.parseColor("#cf213e"));
         Log.v("add check mate effect", "added");
     }
+
+    ///////// AsyncTask and Thread ////////
+    class PostSendMove extends AsyncTask<String, String, String> {
+
+        @Override
+        protected String doInBackground(String... uri) {
+            JSONObject postData = new JSONObject();
+            String data = "";
+            try{
+                postData.put("matchId", matchId);
+                postData.put("androidId", androidId);
+                postData.put("oldPos", spAct.lastPiecePos[0]+" "+spAct.lastPiecePos[1]);
+                postData.put("newPos", spAct.currentLastMovePiecePos[0]+" "+spAct.currentLastMovePiecePos[1]);
+                postData.put("killPos", spAct.getLastKillPos()[0]+" "+spAct.getLastKillPos()[1]);
+
+                URL u = new URL(uri[0]+"SendMove/");
+
+                HttpURLConnection conn = (HttpURLConnection) u.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setDoOutput(true);
+                conn.setDoInput(true);
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+
+                setPostRequestContent(conn, postData);
+
+                InputStream in = conn.getInputStream();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+                String line;
+                while((line = reader.readLine()) != null){
+                    data = data.concat(line);
+                }
+
+            }catch (Exception e){
+                Log.v("error 6", e+"");
+            }
+            return data;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+            isWaitingMove = true;
+            Log.v("Send move", result);
+        }
+    }
+
+    class PostSendCheckMoved extends AsyncTask<String, String, String> {
+
+        @Override
+        protected String doInBackground(String... uri) {
+            JSONObject postData = new JSONObject();
+            String data = "";
+            try{
+                postData.put("matchId", matchId);
+                postData.put("androidId", androidId);
+                postData.put("numMove", numMove);
+
+                URL u = new URL(uri[0]+"CheckIsMoved/");
+
+                HttpURLConnection conn = (HttpURLConnection) u.openConnection();
+                conn.setRequestMethod("POST"); conn.setDoOutput(true); conn.setDoInput(true);
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+
+                setPostRequestContent(conn, postData);
+
+                InputStream in = conn.getInputStream();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+                String line;
+                while((line = reader.readLine()) != null){
+                    data = data.concat(line);
+                }
+
+            }catch (Exception e){
+                Log.v("error 6", e+"");
+            }
+            return data;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+            try {
+                Log.v("Check moved and online", result);
+
+                JSONObject j = new JSONObject(result);
+
+                isOpponentOnline = j.getBoolean("checkOnline");
+                String lastMove = j.getString("result");
+                int totalMove = j.getInt("totalMove");
+
+                if(!lastMove.equals("")) {
+                    numMove = totalMove;
+                    new OpponentMove().execute(lastMove);
+                }else{
+                    isCheckMoved = false;
+                }
+            }catch (Exception e){
+                Log.v("Error check moved", e.getMessage()+"");
+                isCheckMoved = false;
+            }
+        }
+    }
+
+    class OpponentMove extends AsyncTask<String, String, String>{
+        @Override
+        protected String doInBackground(String... result) {
+            String[] pos = result[0].split("-");
+
+            int[] posOld = new int[]{ Integer.parseInt(pos[0].charAt(0)+""), Integer.parseInt(pos[0].charAt(1)+"")};
+            int[] posNew = new int[]{ Integer.parseInt(pos[1].charAt(0)+""), Integer.parseInt(pos[1].charAt(1)+"")};
+            int[] posKill = new int[]{-1, -1};
+            if(!pos[2].equals("NA")){
+                posKill = new int[]{ Integer.parseInt(pos[2].charAt(0)+""), Integer.parseInt(pos[2].charAt(1)+"")};
+            }
+
+            if(Arrays.equals(posKill, posNew)){
+                ImageView v = board.pieces[posKill[0]][posKill[1]];
+                ImageView empV = createEmptyView(posKill);
+
+                if(isWhite){
+                    whiteTeam.alive.remove(v);
+                    blackTeam.kill.add(v);
+                }else{
+                    blackTeam.alive.remove(v);
+                    whiteTeam.kill.add(v);
+                }
+
+                board.pieces[posKill[0]][posKill[1]] = empV;
+            }
+
+            board.swap(posOld, posNew);
+
+
+            return pos[1];
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+            int[] posNew = new int[]{ Integer.parseInt(result.charAt(0)+""), Integer.parseInt(result.charAt(1)+"") };
+            spAct.setLastPieceMove(board.pieces[posNew[0]][posNew[1]].getTag().toString());
+            isCheckMate = isCheckMate(board.pieces[posNew[0]][posNew[1]]);
+
+            reDraw();
+            reDrawEffect();
+
+            isWaitingMove = false;
+            isCheckMoved = false;
+        }
+    }
+
+    class GetPostMoveAble extends AsyncTask<View, ArrayList<int[]>, String>{
+        @Override
+        protected String doInBackground(View... uri) {
+            moveAble = getMoveAble(uri[0]);
+            for (int i = 0; i < moveAble.size(); i++) {
+                int[] temp = moveAble.get(i);
+                Log.v("moveAble", temp[0] + " " + temp[1]);
+            }
+            addEffectMoveAble();
+
+            return "ok";
+        }
+
+        @Override
+        protected void onPostExecute(String r) {
+            super.onPostExecute(r);
+            reDrawEffect();
+        }
+    }
+
+    private void createThreadCheckMoved(){
+        thrCheckMoved = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    while (true) {
+                        if(!isCheckMoved) {
+                            isCheckMoved = true;
+                            new PostSendCheckMoved().execute(url);
+                        }
+                        Thread.sleep(2000);
+                    }
+                }catch (Exception e){
+                    Log.v("Thread check moved", e.getMessage()+"");
+                }
+            }
+        });
+        thrCheckMoved.start();
+    }
+
+    private void setPostRequestContent(HttpURLConnection conn, JSONObject jsonObject) throws IOException {
+        OutputStream os = conn.getOutputStream();
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(os, "UTF-8"));
+        writer.write(jsonObject.toString());
+        Log.i(MainActivity.class.toString(), jsonObject.toString());
+        writer.flush();
+        writer.close();
+        os.close();
+    }
+
 }
