@@ -43,7 +43,6 @@ public class MainActivity extends AppCompatActivity {
     boolean isConnected = false;
     boolean isJoining = false;
     String androidId;
-    String url = "https://immense-forest-46966.herokuapp.com/";
 
     BroadcastReceiver testReceiver = new BroadcastReceiver() {
         @Override
@@ -74,7 +73,7 @@ public class MainActivity extends AppCompatActivity {
                 if (isConnected) {
                     if(matchId.equals("") && !isJoining) {
                         isJoining =true;
-                        new RequestJoin().execute(url);
+                        new RequestJoin().execute(getString(R.string.url_API));
                     }
                     else{
                         Toast.makeText(MainActivity.this, "Joined", Toast.LENGTH_SHORT).show();
@@ -92,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
         androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
         Log.v("id", androidId);
 
-        new RequestCheckRec().execute(url);
+        new RequestCheckRec().execute(getString(R.string.url_API));
     }
 
     class RequestJoin extends AsyncTask<String, String, String>{
@@ -150,7 +149,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onClick(View view) {
                         checkPlayerInLobby.interrupt();
-                        new RequestCancelLobby().execute(url);
+                        new RequestCancelLobby().execute(getString(R.string.url_API));
                     }
                 });
                 createThreadCheckLobby();
@@ -195,7 +194,6 @@ public class MainActivity extends AppCompatActivity {
                     Bundle b = new Bundle();
                     b.putString("matchId", matchId);
                     b.putString("androidId", androidId);
-                    b.putString("url", url);
                     b.putBoolean("isWhite", temp.getString("white").equals(androidId));
                     myIntent.putExtras(b);
                     startActivity(myIntent);
@@ -253,7 +251,7 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void onClick(View view) {
                             if(isConnected) {
-                                new RequestJoin().execute(url);
+                                new RequestJoin().execute(getString(R.string.url_API));
                             }
                             else
                                 Toast.makeText(MainActivity.this, "No internet acceess", Toast.LENGTH_SHORT).show();
@@ -317,7 +315,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onClick(View view) {
                         if(isConnected) {
-                            new RequestJoin().execute(url);
+                            new RequestJoin().execute(getString(R.string.url_API));
                         }
                         else
                             Toast.makeText(MainActivity.this, "No internet acceess", Toast.LENGTH_SHORT).show();
@@ -336,7 +334,7 @@ public class MainActivity extends AppCompatActivity {
                     while (true) {
                         Log.v("thread check lobby", "checking " + time);
                         if(isConnected)
-                            new RequestLobby().execute(url);
+                            new RequestLobby().execute(getString(R.string.url_API));
                         Thread.sleep(2000);
 
                         time += 1;

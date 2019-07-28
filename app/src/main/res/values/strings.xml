@@ -1,3 +1,6 @@
 <resources>
-    <string name="app_name">Chess</string>
+    <string name="app_name">Chess Online</string>
+    <string name="url_API">https://secure-bayou-32062.herokuapp.com/</string>
+    <string name="black">#1b966b</string>
+    <string name="white">#ded79b</string>
 </resources>

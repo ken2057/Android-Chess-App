@@ -37,6 +37,8 @@ public class SpecialAction {
     int[] lastPiecePos;
     int[] currentLastMovePiecePos;
     int[] totQuaDuongAt;
+    int[] castlingOldPos;
+    int[] castlingNewPos;
 
     public int[] getLastKillPos() {
         return lastKillPos;
@@ -54,5 +56,12 @@ public class SpecialAction {
         currentLastMovePiecePos = new int[]{-1, -1};
         totQuaDuongAt = new int[]{-1, -1};
         lastKillPos = new int[]{-1, -1};
+        castlingOldPos = new int[]{-1, -1};
+        castlingNewPos = new int[]{-1, -1};
+    }
+
+    public void resetCastling(){
+        castlingOldPos = new int[]{-1, -1};
+        castlingNewPos = new int[]{-1, -1};
     }
 }
