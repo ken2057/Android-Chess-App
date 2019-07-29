@@ -3,40 +3,28 @@ package com.example.chess;
 import android.content.ClipData;
 import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
-import android.media.Image;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.CountDownTimer;
-import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.DragEvent;
 import android.view.Gravity;
 import android.view.LayoutInflater;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.Button;
 import android.widget.GridLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.PopupMenu;
 import android.widget.PopupWindow;
-import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -47,11 +35,12 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import javax.net.ssl.HttpsURLConnection;
 
 
 public class BoardActivity extends AppCompatActivity {
     ArrayList<int[]> moveAble = new ArrayList<>();
+    //lưu trữ các vị trí có thể nhập thành
+    ArrayList<int[]> posCastling = new ArrayList<>();
 
     Board board = new Board();
     Team blackTeam = new Team();
@@ -61,7 +50,7 @@ public class BoardActivity extends AppCompatActivity {
     Thread thrCheckMoved;
 
     int numMove = 0;
-    int height, width, size;
+    int size;
 
     boolean isWhite;
     boolean isEvolve = false;
@@ -69,23 +58,18 @@ public class BoardActivity extends AppCompatActivity {
     boolean isCheckMate = false;
     boolean isWaitingMove = false;
     boolean isOpponentOnline = true;
+    //block thread call when check opponent moved
     boolean isCheckMoved = false;
-    //-1=lose - 0=null - 1=win
+    //-1=lose - 0=null - 1=win - 2=draw
     int isWin = 0;
-    ArrayList<int[]> posCastling = new ArrayList<>();
-    //Toast.makeText(BoardActivity.this, (char) (pos[0] + 65) + "" + (pos[1] + 1) + " " + v.getTag(), Toast.LENGTH_SHORT).show();
-    String pawnEvolveTo = "N";
+
+    String pawnEvolveTo = " ";
     String androidId, matchId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.board);
-
-        DisplayMetrics displayMetrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-        height = displayMetrics.heightPixels;
-        width = displayMetrics.widthPixels;
 
         GridLayout gridBoard = findViewById(R.id.gridBoard);
         size = gridBoard.getLayoutParams().width/8;
@@ -227,8 +211,6 @@ public class BoardActivity extends AppCompatActivity {
     }
 
     private ImageView addCommonEvent(ImageView img) {
-
-//        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(105, 121);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size-20, size-4);
         lp.setMargins(10, 2, 10, 2);
 
@@ -245,6 +227,7 @@ public class BoardActivity extends AppCompatActivity {
                     int[] posNew = ((Piece) v.getTag()).getPos();
                     int[] posOld = ((Piece) imgView.getTag()).getPos();
                     boolean flag = false;
+                    //check k drop empty
                     for (int i = 0; i < moveAble.size(); i++) {
                         if (Arrays.equals(posNew, moveAble.get(i))) {
                             flag = true;
@@ -260,21 +243,22 @@ public class BoardActivity extends AppCompatActivity {
                             blackTeam.kill.add(board.pieces[posNew[0]][posNew[1]]);
                             whiteTeam.alive.remove(board.pieces[posNew[0]][posNew[1]]);
                         }
+
                         spAct.setLastKillPos(posNew);
-
                         spAct.setLastPieceMove(board.pieces[posOld[0]][posOld[1]].getTag().toString());
-
-                        Log.v("LAST PIECE KILL", spAct.getLastPieceMove());
-
                         spAct.setLastPiecePos(posOld);
                         spAct.setCurrentLastMovePiecePos(posNew);
 
+                        Log.v("LAST PIECE KILL", spAct.getLastPieceMove());
 
+                        //phong tốt khi tốt đi vào hàng 0 hoặc 7
+                        //else reset value đè phòng nó đã phogn tốt nhưng vẫn bị stuck
                         if ((posNew[0] == 0 || posNew[0] == 7) && imgView.getTag().toString().contains("pawn")) {
                             Log.v("Pawn evolve", posNew[0] + ":" + posNew[1]);
                             createPopupPawnEvolve(imgView);
-                        }else{pawnEvolveTo = "N";}
+                        }else{pawnEvolveTo = " ";}
 
+                        //tạo empty view tại vị trí bị ăn và swap với vị trí đi ăn
                         ImageView emptyView = createEmptyView(posNew);
                         board.pieces[posNew[0]][posNew[1]] = emptyView;
 
@@ -288,7 +272,7 @@ public class BoardActivity extends AppCompatActivity {
 
                         reDraw();
                     } else {
-                        pawnEvolveTo = "N";
+                        pawnEvolveTo = " ";
                         spAct.setLastKillPos(new int[]{-1, -1});
                         gridEffect.removeAllViewsInLayout();
                         if (isCheckMate) {
@@ -301,7 +285,7 @@ public class BoardActivity extends AppCompatActivity {
                 return true;
             }
         });
-
+        //thêm sự kiện drag khi mà là team
         if(isWhite == img.getTag().toString().contains("white")) {
 
             img.setOnTouchListener(new View.OnTouchListener() {
@@ -309,20 +293,17 @@ public class BoardActivity extends AppCompatActivity {
                 public boolean onTouch(View v, MotionEvent event) {
                     if (event.getAction() == MotionEvent.ACTION_DOWN && isWin == 0) {
                         spAct.resetCastling();
-                        if (isEvolve || isWaitingMove)
+                        //3 điều kiện sẽ không cho move nữa
+                        //-đang đợi chọn phong tốt
+                        //-đang đợi đối phương move
+                        //-nếu isWin != 0
+                        if (isEvolve || isWaitingMove || isWin != 0)
                             return false;
 
                         ClipData data = ClipData.newPlainText("", "");
                         View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(v);
                         v.startDragAndDrop(data, shadowBuilder, v, 0);
 
-//                        moveAble = getMoveAble(v);
-//                        for (int i = 0; i < moveAble.size(); i++) {
-//                            int[] temp = moveAble.get(i);
-//                            Log.v("moveAble", temp[0] + " " + temp[1]);
-//                        }
-//                        addEffectMoveAble();
-//                        reDrawEffect();
                         new GetPostMoveAble().execute(v);
                     }
                     return true;
@@ -414,10 +395,12 @@ public class BoardActivity extends AppCompatActivity {
                             }
                         }
 
+                        //phong tốt khi tốt đi vào hàng 0 hoặc 7
+                        //else reset value đè phòng nó đã phogn tốt nhưng vẫn bị stuck
                         if ((posNew[0] == 0 || posNew[0] == 7) && imgView.getTag().toString().contains("pawn")) {
                             Log.v("Pawn evolve", posNew[0] + ":" + posNew[1]);
                             createPopupPawnEvolve(imgView);
-                        }else{pawnEvolveTo = "N";}
+                        }else{pawnEvolveTo = " ";}
 
                         Log.v("LAST PIECE MOVED", spAct.getLastPieceMove());
                         spAct.setLastPiecePos(posOld);
@@ -434,7 +417,7 @@ public class BoardActivity extends AppCompatActivity {
                         reDraw();
                     } else {
 
-                        pawnEvolveTo = "N";
+                        pawnEvolveTo = " ";
                         if (!isCheckMate)
                             gridEffect.removeAllViewsInLayout();
                     }
@@ -483,6 +466,7 @@ public class BoardActivity extends AppCompatActivity {
             else
                 whiteTeam.alive.add(imgWhite);
             whiteTeam.alive.add(imgPawnWhite);
+
             //black
             ImageView imgBlack = new ImageView(this);
             imgBlack.setBackgroundResource(blackOrder[i]);
@@ -539,6 +523,7 @@ public class BoardActivity extends AppCompatActivity {
     }
 
     private void reDraw() {
+        //redraw pieces layer
         if (!isKingCheckMove) {
             moveAble = new ArrayList<>();
             Log.v("isCheckMate", isCheckMate+"");
@@ -565,10 +550,17 @@ public class BoardActivity extends AppCompatActivity {
             }
             Log.v("BLACK ALIVE/KILL", blackTeam.alive.size() + "/" + blackTeam.kill.size());
             Log.v("WHITE ALIVE/KILL", whiteTeam.alive.size() + "/" + whiteTeam.kill.size());
+            Log.v("Is end game", isWin+"");
 
-            isWin = checkLost();
-            if((!isWaitingMove && !Arrays.equals(spAct.lastPiecePos, spAct.currentLastMovePiecePos) && !isEvolve)
-                || isWin != 0){
+            //nếu k đợi đối phương di chuyển
+            //nếu k vị trí mới không = vị trí củ
+            //nếu k đang chọn thăng cấp
+            if(!isWaitingMove && !Arrays.equals(spAct.lastPiecePos, spAct.currentLastMovePiecePos) && !isEvolve){
+                isWin = checkWin();
+                if(isWin != 0) {
+                    thrCheckMoved.interrupt();
+                    endGameNotify();
+                }
                 isWaitingMove = true;
                 numMove++;
                 new PostSendMove().execute(getString(R.string.url_API));
@@ -577,6 +569,7 @@ public class BoardActivity extends AppCompatActivity {
     }
 
     private void reDrawEffect(){
+        //redraw effect layer
         GridLayout gridEffect = findViewById(R.id.gridEffect);
         gridEffect.removeAllViewsInLayout();
         String[] partV = spAct.lastPieceMove.split(" ");
@@ -608,6 +601,8 @@ public class BoardActivity extends AppCompatActivity {
     }
 
     private int[] getPositionArr(View v) {
+        //lấy vị trí của quân cờ trong board.pieces
+        //hàm củ nhưng vẫn có cái sử dụng
         if (v == null)
             return new int[]{-1, -1};
 
@@ -637,6 +632,8 @@ public class BoardActivity extends AppCompatActivity {
         String[] partsV = v.getTag().toString().split(" ");
 
         if (v.getTag().toString().contains("pawn")) {
+            //isKingCheckMove để khi được kiểm tra nước đi các nước đi tấn công của đôi phương
+            //==>> loại 2 bước đi thẳng của tốt
             if (!isKingCheckMove) {
                 //move 1
                 if (isPosEmpty(new int[]{pos[0] - move, pos[1]})) {
@@ -723,6 +720,9 @@ public class BoardActivity extends AppCompatActivity {
                     moveAble_temp.add(new int[]{posX[i], posY[i]});
             }
             //nhap thanh
+            //kiểm tra từ vị trí của king
+            //sang trái/phải xem tất cả vị trí có empty
+            // và rook + king chưa di chuyển
             if (!isCheckMate && !((Piece) board.pieces[pos[0]][pos[1]].getTag()).isMoved && !isKingCheckMove) {
                 //left
                 for (int l = pos[1]-1; l >= 0; l--) {
@@ -754,24 +754,22 @@ public class BoardActivity extends AppCompatActivity {
                 }
             }
         }
+        //loại bỏ các nước đi tự sát
         if(!isKingCheckMove) {
             try {
+                //bật chặn để khi recall lạihàm này sẽ không chạy lại cái này
                 isKingCheckMove = true;
                 ArrayList<int[]> posCanMove = new ArrayList<>();
+                //với mỗi vị trí có thể đi kiểm tra chiếu vua
                 for (int i = 0; i < moveAble_temp.size(); i++) {
                     int[] temp = moveAble_temp.get(i);
-                    Log.v("pawn 2", temp[0]+" "+temp[1]);
                     if (Math.min(temp[0], temp[1]) >= 0 && Math.max(temp[0], temp[1]) < 8)
+                        //nếu vị trí đi không làm vua bị chiếu thì sẽ thêm vào bước đi có thể
                         if (!isSuicide(v, moveAble_temp.get(i).clone())) {
                             posCanMove.add(moveAble_temp.get(i).clone());
                         }
-//                    else{
-//                            isCheckMate = true;
-//                        }
                 }
-//                if(posCanMove.size() == moveAble_temp.size()){
-//                    isCheckMate = false;
-//                }
+
 
                 return posCanMove;
             }catch (Exception ex){ Log.v("Error sth 1", ex.getMessage()+""); }
@@ -848,14 +846,13 @@ public class BoardActivity extends AppCompatActivity {
         String[] partV = v.getTag().toString().split(" ");
         int[] currentPos = ((Piece)v.getTag()).getPos();
 
-        Team oldOpponent = whiteTeam.clone();
         Team oldTeam = blackTeam.clone();
         if(partV[1].equals("white")) {
-            oldOpponent = blackTeam.clone();
             oldTeam = whiteTeam.clone();
         }
 
         //simulating
+        //thử hoán đổi vị trí hiện tại với vị trí mới
         ImageView imgNextPos = board.pieces[nextPos[0]][nextPos[1]];
         Piece p = (Piece)imgNextPos.getTag();
         p.setPos(((Piece)board.pieces[currentPos[0]][currentPos[1]].getTag()).getPos());
@@ -875,17 +872,16 @@ public class BoardActivity extends AppCompatActivity {
         }
 
         try{
+            //kiếm tra từng quân bên đối phương, nếu có thể chiếu vua thì trả về false
             currentOpponent.alive.remove(imgNextPos);
             for(int i = 0; i < currentOpponent.alive.size(); i++){
                 ArrayList<int[]> temp = getMoveAble(currentOpponent.alive.get(i));
                 for(int j = 0; j < temp.size(); j++){
                     int[] pos = temp.get(j).clone();
-//                    Log.v("????????????",pos[0]+":"+pos[1]+" "+kingPos[0]+":"+kingPos[1]);
                     if(pos[0] == kingPos[0] && pos[1] == kingPos[1] )
                         return true;
                 }
             }
-
         }
         catch (Exception ex){
             Log.v("Error sth 2", ex.getMessage()+"");
@@ -897,7 +893,7 @@ public class BoardActivity extends AppCompatActivity {
                 else
                     currentOpponent.alive.add(imgNextPos);
             }
-
+            //hoán đổi lại vị trí ban đầu
             imgNextPos.setTag(p);
             board.pieces[currentPos[0]][currentPos[1]] = imgNextPos;
             board.swap(currentPos, nextPos);
@@ -908,6 +904,7 @@ public class BoardActivity extends AppCompatActivity {
 
     private  boolean isCheckMate(View v){
         String[] partV = v.getTag().toString().split(" ");
+        //team - opponent
         Team t = new Team(blackTeam);
         Team o = new Team(whiteTeam);
         if(partV[1].equals("white")) {
@@ -934,8 +931,10 @@ public class BoardActivity extends AppCompatActivity {
         return false;
     }
 
-    private int checkLost(){
+    private int checkWin(){
+        //team
         Team t = new Team(blackTeam);
+        //opponent
         Team o = new Team(whiteTeam);
         if(isWhite) {
             t = new Team(whiteTeam);
@@ -949,6 +948,7 @@ public class BoardActivity extends AppCompatActivity {
 
         if(isCheckMate){
             boolean flag = true;
+            //kiểm tra team còn nước đi
             for(int i = 0; i < t.alive.size(); i++){
                 if(getMoveAble(t.alive.get(i)).size() != 0) {
                     flag = false;
@@ -958,6 +958,7 @@ public class BoardActivity extends AppCompatActivity {
             if(flag)
                 return -1;
             flag = true;
+            //kiểm tra đối phương còn nước đi
             for(int i = 0; i < o.alive.size(); i++){
                 if(getMoveAble(o.alive.get(i)).size() != 0) {
                     flag = false;
@@ -966,8 +967,18 @@ public class BoardActivity extends AppCompatActivity {
             }
             if(flag)
                 return 1;
-        }
+        }else{
+            //hoà TH1:
+            //đối phương còn vua và k còn nước đi
+            if(o.alive.size() == 1 && o.alive.get(0).getTag().toString().contains("king"))
+                if(getMoveAble(o.alive.get(0)).size() == 0)
+                    return 2;
 
+            //hoà TH2:
+            //cả 2 còn vua
+            if(o.alive.size() == 1 && t.alive.size() == 1)
+                return 2;
+        }
         return 0;
     }
 
@@ -1000,6 +1011,15 @@ public class BoardActivity extends AppCompatActivity {
 
         board.effect[kingPos[0]][kingPos[1]].setBackgroundColor(Color.parseColor("#cf213e"));
         Log.v("add check mate effect", "added");
+    }
+
+    private void endGameNotify(){
+        if(isWin == 1)
+            Toast.makeText(BoardActivity.this, "You win", Toast.LENGTH_SHORT).show();
+        else if(isWin == -1)
+            Toast.makeText(BoardActivity.this, "You lose", Toast.LENGTH_SHORT).show();
+        else
+            Toast.makeText(BoardActivity.this, "Draw", Toast.LENGTH_SHORT).show();
     }
 
     ///////// AsyncTask and Thread ////////
@@ -1118,16 +1138,16 @@ public class BoardActivity extends AppCompatActivity {
             int[] posCastlingNew = new int[]{-1, -1};
             int[] posCastlingOld = new int[]{-1, -1};
 
-            if(!pos[2].equals("NA")){
+            if(!pos[2].contains(" ")){
                 posKill = new int[]{ Integer.parseInt(pos[2].charAt(0)+""), Integer.parseInt(pos[2].charAt(1)+"")};
             }
-            if(!pos[3].contains("NA")){
+            if(!pos[3].contains(" ")){
                 posCastlingNew = new int[]{ Integer.parseInt(pos[3].charAt(2)+""), Integer.parseInt(pos[3].charAt(3)+"")};
                 posCastlingOld = new int[]{ Integer.parseInt(pos[3].charAt(0)+""), Integer.parseInt(pos[3].charAt(1)+"")};
                 board.swap(posCastlingNew, posCastlingOld);
             }
 
-            if(!pos[2].equals("NA")){
+            if(!pos[2].contains(" ")){
                 ImageView v = board.pieces[posKill[0]][posKill[1]];
                 ImageView empV = createEmptyView(posKill);
 
@@ -1152,14 +1172,13 @@ public class BoardActivity extends AppCompatActivity {
             super.onPostExecute(result);
             String[] pos = result.split("-");
 
-            int[] posOld = new int[]{ Integer.parseInt(pos[0].charAt(0)+""), Integer.parseInt(pos[0].charAt(1)+"")};
             int[] posNew = new int[]{ Integer.parseInt(pos[1].charAt(0)+""), Integer.parseInt(pos[1].charAt(1)+"")};
 
             spAct.setLastPieceMove(board.pieces[posNew[0]][posNew[1]].getTag().toString());
             spAct.setLastPiecePos(new int[]{Integer.parseInt(pos[0].charAt(0)+""), Integer.parseInt(pos[0].charAt(1)+"")});
             spAct.setCurrentLastMovePiecePos(new int[]{ Integer.parseInt(pos[1].charAt(0)+""), Integer.parseInt(pos[1].charAt(1)+"")});
-
-            if(!pos[4].equals("N")) {
+            //đối phương phong tốt
+            if(!pos[4].equals(" ")) {
                 Piece p = (Piece) board.pieces[posNew[0]][posNew[1]].getTag();
                 String[] partV = p.name.split(" ");
                 switch (pos[4]) {
@@ -1195,6 +1214,26 @@ public class BoardActivity extends AppCompatActivity {
                 board.pieces[posNew[0]][posNew[1]].setTag(p);
             }
 
+            //check đã win hay thua
+            //nếu đã end kill thread
+            if(!pos[5].equals(" ")) {
+                switch (pos[5]) {
+                    case "W":
+                        isWin = isWhite ? 1 : -1;
+                        break;
+                    case "B":
+                        isWin = isWhite ? -1 : 1;
+                        break;
+                    case "D":
+                        isWin = 2;
+                        break;
+                    default:
+                        break;
+                }
+                thrCheckMoved.interrupt();
+                endGameNotify();
+            }
+
             isCheckMate = isCheckMate(board.pieces[posNew[0]][posNew[1]]);
             reDraw();
             reDrawEffect();
@@ -1213,6 +1252,7 @@ public class BoardActivity extends AppCompatActivity {
                 Log.v("moveAble", temp[0] + " " + temp[1]);
             }
             addEffectMoveAble();
+            reDrawEffect();
 
             return "ok";
         }
@@ -1220,11 +1260,11 @@ public class BoardActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(String r) {
             super.onPostExecute(r);
-            reDrawEffect();
         }
     }
 
     private void createThreadCheckMoved(){
+        //thread 2 giây sẽ check nước đi của đối phương
         thrCheckMoved = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -1245,6 +1285,8 @@ public class BoardActivity extends AppCompatActivity {
     }
 
     private void setPostRequestContent(HttpURLConnection conn, JSONObject jsonObject) throws IOException {
+        //copy mạng
+        //để đưa json lên api
         OutputStream os = conn.getOutputStream();
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(os, "UTF-8"));
         writer.write(jsonObject.toString());
