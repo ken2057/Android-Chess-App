@@ -58,7 +58,6 @@ public class BoardActivity extends AppCompatActivity {
     Team whiteTeam = new Team();
     SpecialAction spAct = new SpecialAction();
 
-    Object lock = new Object();
     Thread thrCheckMoved;
 
     int numMove = 0;
@@ -71,6 +70,8 @@ public class BoardActivity extends AppCompatActivity {
     boolean isWaitingMove = false;
     boolean isOpponentOnline = true;
     boolean isCheckMoved = false;
+    //-1=lose - 0=null - 1=win
+    int isWin = 0;
     ArrayList<int[]> posCastling = new ArrayList<>();
     //Toast.makeText(BoardActivity.this, (char) (pos[0] + 65) + "" + (pos[1] + 1) + " " + v.getTag(), Toast.LENGTH_SHORT).show();
     String pawnEvolveTo = "N";
@@ -306,7 +307,7 @@ public class BoardActivity extends AppCompatActivity {
             img.setOnTouchListener(new View.OnTouchListener() {
                 @Override
                 public boolean onTouch(View v, MotionEvent event) {
-                    if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    if (event.getAction() == MotionEvent.ACTION_DOWN && isWin == 0) {
                         spAct.resetCastling();
                         if (isEvolve || isWaitingMove)
                             return false;
@@ -516,9 +517,9 @@ public class BoardActivity extends AppCompatActivity {
 //                imgView.setBackgroundResource(R.drawable.rec_black);
 
                 if ((i + j) % 2 == 1)
-                    imgView.setBackgroundColor(Color.parseColor(getString(R.string.black)));
+                    imgView.setBackgroundColor(getResources().getColor(R.color.black));
                 else
-                    imgView.setBackgroundColor(Color.parseColor(getString(R.string.white)));
+                    imgView.setBackgroundColor(getResources().getColor(R.color.white));
 
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
 
@@ -564,8 +565,10 @@ public class BoardActivity extends AppCompatActivity {
             }
             Log.v("BLACK ALIVE/KILL", blackTeam.alive.size() + "/" + blackTeam.kill.size());
             Log.v("WHITE ALIVE/KILL", whiteTeam.alive.size() + "/" + whiteTeam.kill.size());
-            Log.v("TEST_TEMP", pawnEvolveTo);
-            if(!isWaitingMove && !Arrays.equals(spAct.lastPiecePos, spAct.currentLastMovePiecePos) && !isEvolve) {
+
+            isWin = checkLost();
+            if((!isWaitingMove && !Arrays.equals(spAct.lastPiecePos, spAct.currentLastMovePiecePos) && !isEvolve)
+                || isWin != 0){
                 isWaitingMove = true;
                 numMove++;
                 new PostSendMove().execute(getString(R.string.url_API));
@@ -931,6 +934,43 @@ public class BoardActivity extends AppCompatActivity {
         return false;
     }
 
+    private int checkLost(){
+        Team t = new Team(blackTeam);
+        Team o = new Team(whiteTeam);
+        if(isWhite) {
+            t = new Team(whiteTeam);
+            o = new Team(blackTeam);
+        }
+
+        if(!((Piece)t.alive.get(0).getTag()).name.contains("king"))
+            return -1;
+        if(!((Piece)o.alive.get(0).getTag()).name.contains("king"))
+            return 1;
+
+        if(isCheckMate){
+            boolean flag = true;
+            for(int i = 0; i < t.alive.size(); i++){
+                if(getMoveAble(t.alive.get(i)).size() != 0) {
+                    flag = false;
+                    break;
+                }
+            }
+            if(flag)
+                return -1;
+            flag = true;
+            for(int i = 0; i < o.alive.size(); i++){
+                if(getMoveAble(o.alive.get(i)).size() != 0) {
+                    flag = false;
+                    break;
+                }
+            }
+            if(flag)
+                return 1;
+        }
+
+        return 0;
+    }
+
     private void addEffectMoveAble(){
         //reset effect array
         for(int i = 0; i < 8; i++){
@@ -978,6 +1018,7 @@ public class BoardActivity extends AppCompatActivity {
                 postData.put("castlingNewPos", spAct.castlingNewPos[0] + " " + spAct.castlingNewPos[1]);
                 postData.put("castlingOldPos", spAct.castlingOldPos[0] + " " + spAct.castlingOldPos[1]);
                 postData.put("pawnEvolveTo", pawnEvolveTo.charAt(0)+"");
+                postData.put("isWin", isWin);
 
                 URL u = new URL(uri[0] + "SendMove/");
 
