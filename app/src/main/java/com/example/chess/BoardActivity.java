@@ -36,7 +36,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 
-
+///Main function test push git
 public class BoardActivity extends AppCompatActivity {
     ArrayList<int[]> moveAble = new ArrayList<>();
     //lưu trữ các vị trí có thể nhập thành
