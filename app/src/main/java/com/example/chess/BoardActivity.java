@@ -121,7 +121,7 @@ public class BoardActivity extends AppCompatActivity {
             imgB3.setBackgroundResource(R.drawable.black_rook);
             imgB4.setBackgroundResource(R.drawable.black_queen);
         }
-
+        //add event khi bấm chọn phong tốt
         imgB1.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -785,9 +785,8 @@ public class BoardActivity extends AppCompatActivity {
         String[] partsV = v.getTag().toString().split(" ");
         int[] math = new int[]{-1, -1, 1, 1};
         ArrayList<int[]> temp = new ArrayList<>();
-
+        //chạy theo 4 hướng dọc và ngang
         for (int i = 0; i < 4; i++) {
-
             int[] currentPos = pos.clone();
             while (Math.min(currentPos[0], currentPos[1]) >= 0 && Math.max(currentPos[0], currentPos[1]) < 8) {
                 if (!Arrays.equals(pos, currentPos)) {
@@ -819,7 +818,7 @@ public class BoardActivity extends AppCompatActivity {
         int[] posX = new int[]{1, 1, -1, -1};
         int[] posY = new int[]{1, -1, 1, -1};
         ArrayList<int[]> temp = new ArrayList<>();
-
+        //chạy theo 4 hướng xéo mỗi lần
         for (int i = 0; i < 4; i++) {
             int[] currentPos = pos.clone();
             while (Math.min(currentPos[0], currentPos[1]) >= 0 && Math.max(currentPos[0], currentPos[1]) < 8) {
@@ -845,10 +844,10 @@ public class BoardActivity extends AppCompatActivity {
     private boolean isSuicide(View v, int[] nextPos){
         String[] partV = v.getTag().toString().split(" ");
         int[] currentPos = ((Piece)v.getTag()).getPos();
-
-        Team oldTeam = blackTeam.clone();
+        //lấy team cùng với con cờ đang kiểmtra
+        Team team = blackTeam.clone();
         if(partV[1].equals("white")) {
-            oldTeam = whiteTeam.clone();
+            team = whiteTeam.clone();
         }
 
         //simulating
@@ -866,7 +865,7 @@ public class BoardActivity extends AppCompatActivity {
             currentOpponent = blackTeam.clone();
 
         //find current king pos
-        int[] kingPos = ((Piece)oldTeam.alive.get(0).getTag()).getPos();
+        int[] kingPos = ((Piece)team.alive.get(0).getTag()).getPos();
         if(v.getTag().toString().contains("king")){
             kingPos = ((Piece)v.getTag()).getPos();
         }
@@ -940,12 +939,12 @@ public class BoardActivity extends AppCompatActivity {
             t = new Team(whiteTeam);
             o = new Team(blackTeam);
         }
-
+        //kiểm tra king 2 team còn sống hay không
         if(!((Piece)t.alive.get(0).getTag()).name.contains("king"))
             return -1;
         if(!((Piece)o.alive.get(0).getTag()).name.contains("king"))
             return 1;
-
+        //khi check mate
         if(isCheckMate){
             boolean flag = true;
             //kiểm tra team còn nước đi
@@ -991,7 +990,8 @@ public class BoardActivity extends AppCompatActivity {
         }
         for(int i = 0; i < moveAble.size(); i++){
             int[] pos = moveAble.get(i);
-            board.effect[pos[0]][pos[1]].setBackgroundColor(Color.parseColor("#85aff2"));
+            //set màu ở lớp effect những ô có thể đi
+            board.effect[pos[0]][pos[1]].setBackgroundColor(getResources().getColor(R.color.moveAble));
         }
     }
 
@@ -1008,8 +1008,8 @@ public class BoardActivity extends AppCompatActivity {
         if(partLast[1].equals("black")){
             kingPos = ((Piece) whiteTeam.alive.get(0).getTag()).getPos();
         }
-
-        board.effect[kingPos[0]][kingPos[1]].setBackgroundColor(Color.parseColor("#cf213e"));
+        //add effect màu chiếu khi vua bị chiếu
+        board.effect[kingPos[0]][kingPos[1]].setBackgroundColor(getResources().getColor(R.color.checkmate));
         Log.v("add check mate effect", "added");
     }
 
@@ -1252,7 +1252,6 @@ public class BoardActivity extends AppCompatActivity {
                 Log.v("moveAble", temp[0] + " " + temp[1]);
             }
             addEffectMoveAble();
-            reDrawEffect();
 
             return "ok";
         }
@@ -1260,6 +1259,7 @@ public class BoardActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(String r) {
             super.onPostExecute(r);
+            reDrawEffect();
         }
     }
 

@@ -5,4 +5,6 @@
     <color name="colorAccent">#D81B60</color>
     <color name="black">#779952</color>
     <color name="white">#edeed1</color>
+    <color name="checkmate">#cf213e</color>
+    <color name="moveAble">#85aff2</color>
 </resources>
