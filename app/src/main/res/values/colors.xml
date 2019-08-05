@@ -8,8 +8,8 @@
     <color name="checkmate">#cf213e</color>
     <color name="moveAble">#85aff2</color>
     <color name="colorTransparent">#ffffff</color>
-    <color name="colorGradientStart">#cfd9df </color>
+    <color name="colorGradientStart">#535A5E</color>
     <!--<color name="colorGradientCenter">#363636</color>-->
-    <color name="colorGradientEnd">#16C40C</color>
+    <color name="colorGradientEnd">#CA6284</color>
     <color name="stringApp">#000000</color>
 </resources>
