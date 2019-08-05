@@ -65,33 +65,42 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Button pop = findViewById(R.id.button_popup);
-        pop.setVisibility(View.INVISIBLE);
-        pop.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (isConnected) {
-                    if(matchId.equals("") && !isJoining) {
-                        isJoining =true;
-                        new RequestJoin().execute(getString(R.string.url_API));
-                    }
-                    else{
-                        Toast.makeText(MainActivity.this, "Joined", Toast.LENGTH_SHORT).show();
-                    }
-                }
-                else
-                    Toast.makeText(MainActivity.this, "No internet acceess", Toast.LENGTH_SHORT).show();
-            }
-        });
+//        Button pop = findViewById(R.id.button_popup);
+//        pop.setVisibility(View.INVISIBLE);
+//        pop.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                if (isConnected) {
+//                    if(matchId.equals("") && !isJoining) {
+//                        isJoining =true;
+//                        new RequestJoin().execute(getString(R.string.url_API));
+//                    }
+//                    else{
+//                        Toast.makeText(MainActivity.this, "Joined", Toast.LENGTH_SHORT).show();
+//                    }
+//                }
+//                else
+//                    Toast.makeText(MainActivity.this, "No internet acceess", Toast.LENGTH_SHORT).show();
+//            }
+//        });
 
-        IntentFilter filter = new IntentFilter();
-        filter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
-        registerReceiver(testReceiver, filter);
+        Intent myIntent = new Intent(MainActivity.this, BoardActivity.class);
+        Bundle b = new Bundle();
+        b.putString("matchId", "abc");
+        b.putString("androidId", androidId);
+        b.putBoolean("isWhite", true);
+        myIntent.putExtras(b);
+        startActivity(myIntent);
 
-        androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
-        Log.v("id", androidId);
 
-        new RequestCheckRec().execute(getString(R.string.url_API));
+//        IntentFilter filter = new IntentFilter();
+//        filter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
+//        registerReceiver(testReceiver, filter);
+//
+//        androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+//        Log.v("id", androidId);
+//
+//        new RequestCheckRec().execute(getString(R.string.url_API));
     }
 
     class RequestJoin extends AsyncTask<String, String, String>{
