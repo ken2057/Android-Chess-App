@@ -1,4 +1,11 @@
 <resources>
     <string name="app_name">Chess Online</string>
     <string name="url_API">https://secure-bayou-32062.herokuapp.com/</string>
+    <string name="content_main_activity">Chọn chủ đề</string>
+    <string name="content_sign_in_activity">Wizard Chess</string>
+    <string name="sign_in_account_name">Account Name</string>
+    <string name="sign_in_password">Password</string>
+    <string name="sign_in_account_name_hint">Enter your account</string>
+    <string name="sign_in_password_hint">Enter your password</string>
+    <string name="already_account">If you have already account -> </string>
 </resources>

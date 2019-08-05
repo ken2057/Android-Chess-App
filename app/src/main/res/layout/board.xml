@@ -6,7 +6,7 @@
     android:id="@+id/mainScreen"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/activity_sign_up"
+    android:background="@drawable/gradient_style"
     tools:context=".BoardActivity">
 
     <LinearLayout
