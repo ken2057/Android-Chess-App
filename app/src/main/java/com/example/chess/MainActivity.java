@@ -83,24 +83,24 @@ public class MainActivity extends AppCompatActivity {
 //                    Toast.makeText(MainActivity.this, "No internet acceess", Toast.LENGTH_SHORT).show();
 //            }
 //        });
-
-        Intent myIntent = new Intent(MainActivity.this, BoardActivity.class);
-        Bundle b = new Bundle();
-        b.putString("matchId", "abc");
-        b.putString("androidId", androidId);
-        b.putBoolean("isWhite", true);
-        myIntent.putExtras(b);
-        startActivity(myIntent);
-
-
-//        IntentFilter filter = new IntentFilter();
-//        filter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
-//        registerReceiver(testReceiver, filter);
 //
-//        androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
-//        Log.v("id", androidId);
-//
-//        new RequestCheckRec().execute(getString(R.string.url_API));
+//        Intent myIntent = new Intent(MainActivity.this, BoardActivity.class);
+//        Bundle b = new Bundle();
+//        b.putString("matchId", "abc");
+//        b.putString("androidId", androidId);
+//        b.putBoolean("isWhite", true);
+//        myIntent.putExtras(b);
+//        startActivity(myIntent);
+
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
+        registerReceiver(testReceiver, filter);
+
+        androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+        Log.v("id", androidId);
+
+        new RequestCheckRec().execute(getString(R.string.url_API));
     }
 
     class RequestJoin extends AsyncTask<String, String, String>{
@@ -185,7 +185,6 @@ public class MainActivity extends AppCompatActivity {
                 }
                 else { response = "FAILED"; }
             } catch (IOException e) { }
-
             return result.toString();
         }
 

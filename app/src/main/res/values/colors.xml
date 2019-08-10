@@ -10,6 +10,6 @@
     <color name="colorTransparent">#ffffff</color>
     <color name="colorGradientStart">#535A5E</color>
     <!--<color name="colorGradientCenter">#363636</color>-->
-    <color name="colorGradientEnd">#CA6284</color>
-    <color name="stringApp">#000000</color>
+    <color name="colorGradientEnd">#F1799F</color>
+    <color name="stringApp">#1B1919</color>
 </resources>

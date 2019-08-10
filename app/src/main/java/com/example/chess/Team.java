@@ -22,7 +22,7 @@ public class Team {
     }
 
     ArrayList<ImageView> alive;
-    ArrayList<ImageView> kill;
+    public ArrayList<ImageView> kill;
 
     public Team(Team t) {
         this.alive = new ArrayList<>(t.alive);

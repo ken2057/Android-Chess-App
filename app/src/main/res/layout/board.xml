@@ -18,13 +18,15 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <Button
+        <ImageButton
             android:layout_width="50dp"
+            android:src="@mipmap/my_logo1"
             android:layout_height="match_parent" />
 
         <ImageView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:background="#465165"
             android:contentDescription="@string/app_name" />
     </LinearLayout>
 
@@ -39,7 +41,30 @@
 
         <ImageView
             android:layout_width="50dp"
+            android:src="@mipmap/ic_launcher"
             android:layout_height="match_parent" />
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="100dp"
+            android:layout_height="match_parent">
+            <TextView
+                android:text="Opp1"
+                android:fontFamily="@font/montserrat_regular"
+                android:layout_width="match_parent"
+                android:layout_height="25dp" />
+            <TextView
+                android:text="1285"
+                android:fontFamily="@font/montserrat_regular"
+                android:layout_width="match_parent"
+                android:layout_height="25dp" />
+        </LinearLayout>
+        <LinearLayout
+            android:background="#198198"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+        </LinearLayout>
+
     </LinearLayout>
 
     <GridLayout
@@ -48,7 +73,6 @@
         android:layout_height="420dp"
         android:layout_marginStart="4dp"
         android:layout_marginTop="12dp"
-
         android:layout_marginEnd="8dp"
         android:columnCount="8"
         android:rowCount="8"
@@ -96,12 +120,33 @@
         android:layout_marginStart="0dp"
         android:layout_marginTop="10dp"
         app:layout_constraintStart_toStartOf="parent"
-
         app:layout_constraintTop_toBottomOf="@+id/gridEffect">
 
         <ImageView
             android:layout_width="50dp"
+            android:src="@mipmap/mgfhjfgoi"
             android:layout_height="50dp" />
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="100dp"
+            android:layout_height="match_parent">
+            <TextView
+                android:text="Opp2"
+                android:fontFamily="@font/montserrat_regular"
+                android:layout_width="match_parent"
+                android:layout_height="25dp" />
+            <TextView
+                android:text="1359"
+                android:fontFamily="@font/montserrat_regular"
+                android:layout_width="match_parent"
+                android:layout_height="25dp" />
+        </LinearLayout>
+        <LinearLayout
+            android:background="#198198"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+        </LinearLayout>
     </LinearLayout>
 
     <LinearLayout
@@ -110,12 +155,16 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/pieces">
 
-        <ImageButton
+        <Button
             android:layout_width="100dp"
+            android:text="draw"
+            android:fontFamily="@font/montserrat_bold"
             android:layout_height="match_parent" />
 
-        <ImageButton
+        <Button
+            android:fontFamily="@font/montserrat_bold"
             android:layout_width="100dp"
+            android:text="resign"
             android:layout_height="match_parent" />
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
