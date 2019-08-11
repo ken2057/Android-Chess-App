@@ -1,54 +1,69 @@
 package com.example.chess;
 
 public class SpecialAction {
-    public String getLastPieceMove() {
+    public static String getLastPieceMove() {
         return lastPieceMove;
     }
 
-    public void setLastPieceMove(String lastPieceMove) {
-        this.lastPieceMove = lastPieceMove;
+    public static void setLastPieceMove(String lastPieceMove) {
+        SpecialAction.lastPieceMove = lastPieceMove;
     }
 
-    public int[] getLastPiecePos() {
+    public static int[] getLastPiecePos() {
         return lastPiecePos;
     }
 
-    public void setLastPiecePos(int[] lastPiecePos) {
-        this.lastPiecePos = lastPiecePos;
+    public static void setLastPiecePos(int[] lastPiecePos) {
+        SpecialAction.lastPiecePos = lastPiecePos;
     }
 
-    public int[] getCurrentLastMovePiecePos() {
+    public static int[] getCurrentLastMovePiecePos() {
         return currentLastMovePiecePos;
     }
 
-    public void setCurrentLastMovePiecePos(int[] currentLastMovePiecePos) {
-        this.currentLastMovePiecePos = currentLastMovePiecePos;
+    public static void setCurrentLastMovePiecePos(int[] currentLastMovePiecePos) {
+        SpecialAction.currentLastMovePiecePos = currentLastMovePiecePos;
     }
 
-    public int[] getTotQuaDuongAt() {
+    public static int[] getTotQuaDuongAt() {
         return totQuaDuongAt;
     }
 
-    public void setTotQuaDuongAt(int[] totQuaDuongAt) {
-        this.totQuaDuongAt = totQuaDuongAt;
+    public static void setTotQuaDuongAt(int[] totQuaDuongAt) {
+        SpecialAction.totQuaDuongAt = totQuaDuongAt;
     }
 
-    String lastPieceMove;
-    int[] lastPiecePos;
-    int[] currentLastMovePiecePos;
-    int[] totQuaDuongAt;
-    int[] castlingOldPos;
-    int[] castlingNewPos;
+    public static int[] getCastlingOldPos() {
+        return castlingOldPos;
+    }
 
-    public int[] getLastKillPos() {
+    public static void setCastlingOldPos(int[] castlingOldPos) {
+        SpecialAction.castlingOldPos = castlingOldPos;
+    }
+
+    public static int[] getCastlingNewPos() {
+        return castlingNewPos;
+    }
+
+    public static void setCastlingNewPos(int[] castlingNewPos) {
+        SpecialAction.castlingNewPos = castlingNewPos;
+    }
+
+    public static int[] getLastKillPos() {
         return lastKillPos;
     }
 
-    public void setLastKillPos(int[] lastKillPos) {
-        this.lastKillPos = lastKillPos;
+    public static void setLastKillPos(int[] lastKillPos) {
+        SpecialAction.lastKillPos = lastKillPos;
     }
 
-    int[] lastKillPos;
+    public static String lastPieceMove;
+    public static int[] lastPiecePos;
+    public static int[] currentLastMovePiecePos;
+    public static int[] totQuaDuongAt;
+    public static int[] castlingOldPos;
+    public static int[] castlingNewPos;
+    public static int[] lastKillPos;
 
     public SpecialAction(){
         lastPieceMove = "";

@@ -166,5 +166,11 @@
             android:layout_width="100dp"
             android:text="resign"
             android:layout_height="match_parent" />
+        <Button
+            android:id="@+id/btnOpenChat"
+            android:fontFamily="@font/montserrat_bold"
+            android:layout_width="100dp"
+            android:layout_height="wrap_content"
+            android:text="Chat"/>
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

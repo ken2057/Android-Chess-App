@@ -5,7 +5,7 @@ import android.widget.ImageView;
 
 public class Board {
     ImageView[][] layout;
-    ImageView[][] pieces;
+    public static ImageView[][] pieces;
     ImageView[][] effect;
 
     public Board(){

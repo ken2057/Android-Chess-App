@@ -1,7 +1,9 @@
 package com.example.chess;
 
 import android.content.ClipData;
+import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -12,6 +14,7 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
 import android.widget.GridLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -20,6 +23,13 @@ import android.widget.PopupWindow;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.example.chess.Adapters.ChatAdapter;
+import com.example.chess.AsyncTasks.GetPostMoveAble;
+import com.example.chess.AsyncTasks.PostSendCheckMoved;
+import com.example.chess.AsyncTasks.PostSendMove;
+import com.example.chess.AsyncTasks.RequestCancelLobby;
+import com.example.chess.Threads.ThrCheckMove;
 
 import org.json.JSONObject;
 
@@ -34,37 +44,49 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 
 ///Main function test push git
 public class BoardActivity extends AppCompatActivity {
-    ArrayList<int[]> moveAble = new ArrayList<>();
+    public static ArrayList<int[]> moveAble = new ArrayList<>();
     //lưu trữ các vị trí có thể nhập thành
-    ArrayList<int[]> posCastling = new ArrayList<>();
+    static ArrayList<int[]> posCastling = new ArrayList<>();
 
-    Board board = new Board();
-    Team blackTeam = new Team();
-    Team whiteTeam = new Team();
-    SpecialAction spAct = new SpecialAction();
+    public static ArrayList<String> chatIdOrder;
+    public static ArrayList<String> chatMsg;
 
-    Thread thrCheckMoved;
+    public static GridLayout gridEffect;
+    public static GridLayout gridBoard;
+    public static GridLayout gridChess;
 
-    int numMove = 0;
-    int size;
+    public static Board board;
+    public static Team blackTeam;
+    public static Team whiteTeam;
+    public static SpecialAction spAct;
 
-    boolean isWhite;
-    boolean isEvolve = false;
-    boolean isKingCheckMove = false;
-    boolean isCheckMate = false;
-    boolean isWaitingMove = false;
-    boolean isOpponentOnline = true;
+    public static Thread thrCheckMoved;
+
+    public static int numMove = 0;
+    public static int numChat = 0;
+    static int size;
+
+    public static boolean isWhite;
+    static boolean isEvolve = false;
+    public static boolean isKingCheckMove = false;
+    public static boolean isCheckMate = false;
+    public static boolean isWaitingMove = false;
     //block thread call when check opponent moved
-    boolean isCheckMoved = false;
+    public static boolean isCheckMoved = false;
     //-1=lose - 0=null - 1=win - 2=draw
-    int isWin = 0;
+    public static int isWin = 0;
 
-    String pawnEvolveTo = " ";
-    String androidId, matchId;
+    public static String pawnEvolveTo = " ";
+    public static String androidId, matchId;
+
+    public static String URL;
+
+    public static Context context;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,11 +96,45 @@ public class BoardActivity extends AppCompatActivity {
         GridLayout gridBoard = findViewById(R.id.gridBoard);
         size = gridBoard.getLayoutParams().width/8;
 
+        referenceVariable();
+        addEventForBtn();
         getDataFromIntent();
+
         createEmptyBoard();
 
         setupBoard();
-        createThreadCheckMoved();
+        thrCheckMoved = new ThrCheckMove();
+        thrCheckMoved.start();
+    }
+
+    private void addEventForBtn(){
+        Button btnOpenChat = findViewById(R.id.btnOpenChat);
+        btnOpenChat.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent chat = new Intent(BoardActivity.this, ChatActivity.class);
+                startActivity(chat);
+            }
+        });
+    }
+
+    private void referenceVariable(){
+        context = this;
+        URL = getString(R.string.url_API);
+        gridEffect = findViewById(R.id.gridEffect);
+        gridBoard = findViewById(R.id.gridBoard);
+        gridChess = findViewById(R.id.gridChess);
+
+        board = new Board();
+        blackTeam = new Team();
+        whiteTeam = new Team();
+        spAct = new SpecialAction();
+
+        chatIdOrder = new ArrayList<String>(){};
+        chatMsg = new ArrayList<String>(){};
+
+        chatIdOrder.add(""); chatIdOrder.add("");
+        chatMsg.add(""); chatMsg.add("");
     }
 
     private void getDataFromIntent(){
@@ -89,11 +145,11 @@ public class BoardActivity extends AppCompatActivity {
         isWaitingMove = !isWhite;
     }
 
-    private void createPopupPawnEvolve(View v) {
+    private static void createPopupPawnEvolve( View v) {
         isEvolve = true;
         final String[] partV = v.getTag().toString().split(" ");
 
-        LayoutInflater layoutInflater = (LayoutInflater) BoardActivity.this.getSystemService(LAYOUT_INFLATER_SERVICE);
+        LayoutInflater layoutInflater = (LayoutInflater) context.getSystemService(LAYOUT_INFLATER_SERVICE);
         final View customView = layoutInflater.inflate(R.layout.activity_test,null);
 
         //instantiate popup window
@@ -166,7 +222,7 @@ public class BoardActivity extends AppCompatActivity {
         popupWindow.setFocusable(true);
     }
 
-    private void pawnEvolve(){
+    private static void pawnEvolve(){
         int[] temp = spAct.currentLastMovePiecePos;
         Piece p = (Piece)board.pieces[temp[0]][temp[1]].getTag();
         p.name = pawnEvolveTo;
@@ -210,7 +266,7 @@ public class BoardActivity extends AppCompatActivity {
         reDraw();
     }
 
-    private ImageView addCommonEvent(ImageView img) {
+    private ImageView addCommonEvent(final  ImageView img) {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size-20, size-4);
         lp.setMargins(10, 2, 10, 2);
 
@@ -304,7 +360,11 @@ public class BoardActivity extends AppCompatActivity {
                         View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(v);
                         v.startDragAndDrop(data, shadowBuilder, v, 0);
 
-                        new GetPostMoveAble().execute(v);
+                        try {
+                            new GetPostMoveAble().execute(v).get();
+                        }catch (Exception e){
+                            //
+                        }
                     }
                     return true;
                 }
@@ -313,8 +373,8 @@ public class BoardActivity extends AppCompatActivity {
         return img;
     }
 
-    private ImageView createEmptyView(int[] pos) {
-        final ImageView img = new ImageView(this);
+    public static ImageView createEmptyView(final  int[] pos) {
+        final ImageView img = new ImageView(context);
         img.setBackgroundResource(R.drawable.empty);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
         img.setLayoutParams(lp);
@@ -324,7 +384,6 @@ public class BoardActivity extends AppCompatActivity {
             @Override
             public boolean onDrag(View v, DragEvent e) {
                 if (e.getAction() == DragEvent.ACTION_DROP) {
-                    GridLayout gridEffect = findViewById(R.id.gridEffect);
                     ImageView imgView = (ImageView) e.getLocalState();
 
                     int[] posNew = ((Piece) v.getTag()).getPos();
@@ -340,7 +399,7 @@ public class BoardActivity extends AppCompatActivity {
                         }
                     }
 
-                    Log.v("DROP EMPTY", posNew[0] + " " + posNew[1]);
+                    Log.v("DROP EMPTY", posNew[0] + " " + posNew[1]+" "+flag);
                     if (flag) {
                         //an tot qua duong
                         if (Arrays.equals(spAct.getTotQuaDuongAt(), posNew)) {
@@ -367,7 +426,7 @@ public class BoardActivity extends AppCompatActivity {
                         for (int i = 0; i < posCastling.size(); i++) {
                             int[] posNhap = posCastling.get(i);
                             if (Arrays.equals(posNhap, posNew)) {
-                                ImageView rook = new ImageView(BoardActivity.this);
+                                ImageView rook = new ImageView(context);
                                 int[] posSwap = new int[]{posOld[0], -1};
                                 //left
                                 if (posNhap[1] - posOld[1] < 0) {
@@ -522,14 +581,12 @@ public class BoardActivity extends AppCompatActivity {
         }
     }
 
-    private void reDraw() {
+    public static  void reDraw() {
         //redraw pieces layer
         if (!isKingCheckMove) {
             moveAble = new ArrayList<>();
             Log.v("isCheckMate", isCheckMate+"");
             addEffectMoveAble();
-            GridLayout gridEffect = findViewById(R.id.gridEffect);
-            GridLayout gridChess = findViewById(R.id.gridChess);
             gridChess.removeAllViewsInLayout();
             gridEffect.removeAllViewsInLayout();
 
@@ -563,14 +620,18 @@ public class BoardActivity extends AppCompatActivity {
                 }
                 isWaitingMove = true;
                 numMove++;
-                new PostSendMove().execute(getString(R.string.url_API));
+                try {
+                    new PostSendMove().execute().get();
+                }
+                catch (Exception e){
+                    //
+                }
             }
         }
     }
 
-    private void reDrawEffect(){
+    public static  void reDrawEffect(){
         //redraw effect layer
-        GridLayout gridEffect = findViewById(R.id.gridEffect);
         gridEffect.removeAllViewsInLayout();
         String[] partV = spAct.lastPieceMove.split(" ");
         int[] kingPos = new int[]{-1,-1};
@@ -600,28 +661,13 @@ public class BoardActivity extends AppCompatActivity {
         Log.v("Add effect", "Added");
     }
 
-    private int[] getPositionArr(View v) {
-        //lấy vị trí của quân cờ trong board.pieces
-        //hàm củ nhưng vẫn có cái sử dụng
-        if (v == null)
-            return new int[]{-1, -1};
-
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
-                if (board.pieces[i][j] == v)
-                    return new int[]{i, j};
-            }
-        }
-        return new int[]{-1, -1};
-    }
-
-    private boolean isPosEmpty(int[] pos) {
+    private static boolean isPosEmpty(int[] pos) {
         if (Math.min(pos[0], pos[1]) >= 0 && Math.max(pos[0], pos[1]) < 8)
             return(board.pieces[pos[0]][pos[1]].getTag().toString().equals("null"));
         return false;
     }
 
-    private ArrayList<int[]> getMoveAble(View v) {
+    public static ArrayList<int[]> getMoveAble(View v) {
         if(!isKingCheckMove)
             posCastling = new ArrayList<>();
         ArrayList<int[]> moveAble_temp = new ArrayList<>();
@@ -780,8 +826,9 @@ public class BoardActivity extends AppCompatActivity {
         return moveAble_temp;
     }
 
-    private ArrayList<int[]> moveLine(View v) {
-        int[] pos = getPositionArr(v);
+    private static ArrayList<int[]> moveLine(View v) {
+//        int[] pos = getPositionArr(v);
+        int[] pos = ((Piece)v.getTag()).getPos();
         String[] partsV = v.getTag().toString().split(" ");
         int[] math = new int[]{-1, -1, 1, 1};
         ArrayList<int[]> temp = new ArrayList<>();
@@ -812,8 +859,9 @@ public class BoardActivity extends AppCompatActivity {
         return temp;
     }
 
-    private ArrayList<int[]> moveXeo(View v) {
-        int[] pos = getPositionArr(v);
+    private static ArrayList<int[]> moveXeo(View v) {
+//        int[] pos = getPositionArr(v);
+        int[] pos = ((Piece)v.getTag()).getPos();
         String[] partsV = v.getTag().toString().split(" ");
         int[] posX = new int[]{1, 1, -1, -1};
         int[] posY = new int[]{1, -1, 1, -1};
@@ -841,7 +889,7 @@ public class BoardActivity extends AppCompatActivity {
         return temp;
     }
 
-    private boolean isSuicide(View v, int[] nextPos){
+    private static boolean isSuicide( View v, int[] nextPos){
         String[] partV = v.getTag().toString().split(" ");
         int[] currentPos = ((Piece)v.getTag()).getPos();
         //lấy team cùng với con cờ đang kiểmtra
@@ -901,7 +949,7 @@ public class BoardActivity extends AppCompatActivity {
         return false;
     }
 
-    private  boolean isCheckMate(View v){
+    public static boolean isCheckMate(View v){
         String[] partV = v.getTag().toString().split(" ");
         //team - opponent
         Team t = new Team(blackTeam);
@@ -912,9 +960,9 @@ public class BoardActivity extends AppCompatActivity {
         }
         try {
             for (int i = 0; i < t.alive.size(); i++) {
-                isKingCheckMove = true;
+                BoardActivity.isKingCheckMove = true;
 
-                ArrayList<int[]> move = getMoveAble(t.alive.get(i));
+                ArrayList<int[]> move =  BoardActivity.getMoveAble(t.alive.get(i));
                 for (int j = 0; j < move.size(); j++) {
                     int[] temp = move.get(j);
                     int[] temp2 = ((Piece)o.alive.get(0).getTag()).getPos();
@@ -930,7 +978,7 @@ public class BoardActivity extends AppCompatActivity {
         return false;
     }
 
-    private int checkWin(){
+    private static int checkWin(){
         //team
         Team t = new Team(blackTeam);
         //opponent
@@ -981,7 +1029,7 @@ public class BoardActivity extends AppCompatActivity {
         return 0;
     }
 
-    private void addEffectMoveAble(){
+    public static void addEffectMoveAble(){
         //reset effect array
         for(int i = 0; i < 8; i++){
             for(int j = 0; j < 8; j++){
@@ -991,11 +1039,12 @@ public class BoardActivity extends AppCompatActivity {
         for(int i = 0; i < moveAble.size(); i++){
             int[] pos = moveAble.get(i);
             //set màu ở lớp effect những ô có thể đi
-            board.effect[pos[0]][pos[1]].setBackgroundColor(getResources().getColor(R.color.moveAble));
+
+            board.effect[pos[0]][pos[1]].setBackgroundColor(context.getResources().getColor(R.color.moveAble));
         }
     }
 
-    private void addEffectCheckMate(){
+    private static void addEffectCheckMate(){
         //reset effect array
         for(int i = 0; i < 8; i++){
             for(int j = 0; j < 8; j++){
@@ -1009,291 +1058,30 @@ public class BoardActivity extends AppCompatActivity {
             kingPos = ((Piece) whiteTeam.alive.get(0).getTag()).getPos();
         }
         //add effect màu chiếu khi vua bị chiếu
-        board.effect[kingPos[0]][kingPos[1]].setBackgroundColor(getResources().getColor(R.color.checkmate));
+        board.effect[kingPos[0]][kingPos[1]].setBackgroundColor(context.getResources().getColor(R.color.checkmate));
         Log.v("add check mate effect", "added");
     }
 
-    private void endGameNotify(){
+    public static  void endGameNotify(){
+        thrCheckMoved.interrupt();
+
         if(isWin == 1)
-            Toast.makeText(BoardActivity.this, "You win", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "You win", Toast.LENGTH_SHORT).show();
         else if(isWin == -1)
-            Toast.makeText(BoardActivity.this, "You lose", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "You lose", Toast.LENGTH_SHORT).show();
         else
-            Toast.makeText(BoardActivity.this, "Draw", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "Draw", Toast.LENGTH_SHORT).show();
     }
 
-    ///////// AsyncTask and Thread ////////
-    class PostSendMove extends AsyncTask<String, String, String> {
-
-        @Override
-        protected String doInBackground(String... uri) {
-            JSONObject postData = new JSONObject();
-            String data = "";
-            try {
-                postData.put("matchId", matchId);
-                postData.put("androidId", androidId);
-                postData.put("oldPos", spAct.lastPiecePos[0] + " " + spAct.lastPiecePos[1]);
-                postData.put("newPos", spAct.currentLastMovePiecePos[0] + " " + spAct.currentLastMovePiecePos[1]);
-                postData.put("killPos", spAct.getLastKillPos()[0] + " " + spAct.getLastKillPos()[1]);
-                postData.put("castlingNewPos", spAct.castlingNewPos[0] + " " + spAct.castlingNewPos[1]);
-                postData.put("castlingOldPos", spAct.castlingOldPos[0] + " " + spAct.castlingOldPos[1]);
-                postData.put("pawnEvolveTo", pawnEvolveTo.charAt(0)+"");
-                postData.put("isWin", isWin);
-
-                URL u = new URL(uri[0] + "SendMove/");
-
-                HttpURLConnection conn = (HttpURLConnection) u.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setDoOutput(true);
-                conn.setDoInput(true);
-                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-
-                setPostRequestContent(conn, postData);
-
-                InputStream in = conn.getInputStream();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    data = data.concat(line);
-                }
-
-            } catch (Exception e) {
-                Log.v("error 6", e + "");
-            }
-            return data;
-        }
-
-        @Override
-        protected void onPostExecute(String result) {
-            super.onPostExecute(result);
-            Log.v("Send move", result);
-        }
-    }
-
-    class PostSendCheckMoved extends AsyncTask<String, String, String> {
-
-        @Override
-        protected String doInBackground(String... uri) {
-            JSONObject postData = new JSONObject();
-            String data = "";
-            try{
-                postData.put("matchId", matchId);
-                postData.put("androidId", androidId);
-                postData.put("numMove", numMove);
-
-                URL u = new URL(uri[0]+"CheckIsMoved/");
-
-                HttpURLConnection conn = (HttpURLConnection) u.openConnection();
-                conn.setRequestMethod("POST"); conn.setDoOutput(true); conn.setDoInput(true);
-                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-
-                setPostRequestContent(conn, postData);
-
-                InputStream in = conn.getInputStream();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-                String line;
-                while((line = reader.readLine()) != null){
-                    data = data.concat(line);
-                }
-
-            }catch (Exception e){
-                Log.v("error 6", e+"");
-            }
-            return data;
-        }
-
-        @Override
-        protected void onPostExecute(String result) {
-            super.onPostExecute(result);
-            try {
-                Log.v("Check moved and online", result);
-
-                JSONObject j = new JSONObject(result);
-
-                isOpponentOnline = j.getBoolean("checkOnline");
-                String lastMove = j.getString("result");
-                int totalMove = j.getInt("totalMove");
-
-                if(!lastMove.equals("")) {
-                    numMove = totalMove;
-                    new OpponentMove().execute(lastMove);
-                }else{
-                    isCheckMoved = false;
-                }
-            }catch (Exception e){
-                Log.v("Error check moved", e.getMessage()+"");
-                isCheckMoved = false;
-            }
-        }
-    }
-
-    class OpponentMove extends AsyncTask<String, String, String>{
-        @Override
-        protected String doInBackground(String... result) {
-            String[] pos = result[0].split("-");
-            Log.v("checking", result[0]);
-            int[] posOld = new int[]{ Integer.parseInt(pos[0].charAt(0)+""), Integer.parseInt(pos[0].charAt(1)+"")};
-            int[] posNew = new int[]{ Integer.parseInt(pos[1].charAt(0)+""), Integer.parseInt(pos[1].charAt(1)+"")};
-            int[] posKill = new int[]{-1, -1};
-            int[] posCastlingNew = new int[]{-1, -1};
-            int[] posCastlingOld = new int[]{-1, -1};
-
-            if(!pos[2].contains(" ")){
-                posKill = new int[]{ Integer.parseInt(pos[2].charAt(0)+""), Integer.parseInt(pos[2].charAt(1)+"")};
-            }
-            if(!pos[3].contains(" ")){
-                posCastlingNew = new int[]{ Integer.parseInt(pos[3].charAt(2)+""), Integer.parseInt(pos[3].charAt(3)+"")};
-                posCastlingOld = new int[]{ Integer.parseInt(pos[3].charAt(0)+""), Integer.parseInt(pos[3].charAt(1)+"")};
-                board.swap(posCastlingNew, posCastlingOld);
-            }
-
-            if(!pos[2].contains(" ")){
-                ImageView v = board.pieces[posKill[0]][posKill[1]];
-                ImageView empV = createEmptyView(posKill);
-
-                if(isWhite){
-                    whiteTeam.alive.remove(v);
-                    blackTeam.kill.add(v);
-                }else{
-                    blackTeam.alive.remove(v);
-                    whiteTeam.kill.add(v);
-                }
-
-                board.pieces[posKill[0]][posKill[1]] = empV;
-            }
-
-            board.swap(posOld, posNew);
-
-            return result[0];
-        }
-
-        @Override
-        protected void onPostExecute(String result) {
-            super.onPostExecute(result);
-            String[] pos = result.split("-");
-
-            int[] posNew = new int[]{ Integer.parseInt(pos[1].charAt(0)+""), Integer.parseInt(pos[1].charAt(1)+"")};
-
-            spAct.setLastPieceMove(board.pieces[posNew[0]][posNew[1]].getTag().toString());
-            spAct.setLastPiecePos(new int[]{Integer.parseInt(pos[0].charAt(0)+""), Integer.parseInt(pos[0].charAt(1)+"")});
-            spAct.setCurrentLastMovePiecePos(new int[]{ Integer.parseInt(pos[1].charAt(0)+""), Integer.parseInt(pos[1].charAt(1)+"")});
-            //đối phương phong tốt
-            if(!pos[4].equals(" ")) {
-                Piece p = (Piece) board.pieces[posNew[0]][posNew[1]].getTag();
-                String[] partV = p.name.split(" ");
-                switch (pos[4]) {
-                    case "k":
-                        p.name = "knight "+partV[1];
-                        if(partV[1].equals("white"))
-                            board.pieces[posNew[0]][posNew[1]].setBackgroundResource(R.drawable.white_knight);
-                        else
-                            board.pieces[posNew[0]][posNew[1]].setBackgroundResource(R.drawable.black_knight);
-                        break;
-                    case "b":
-                        p.name = "bishop "+partV[1];
-                        if(partV[1].equals("white"))
-                            board.pieces[posNew[0]][posNew[1]].setBackgroundResource(R.drawable.white_bishop);
-                        else
-                            board.pieces[posNew[0]][posNew[1]].setBackgroundResource(R.drawable.black_bishop);
-                        break;
-                    case "q":
-                        p.name = "queen "+partV[1];
-                        if(partV[1].equals("white"))
-                            board.pieces[posNew[0]][posNew[1]].setBackgroundResource(R.drawable.white_queen);
-                        else
-                            board.pieces[posNew[0]][posNew[1]].setBackgroundResource(R.drawable.black_queen);
-                        break;
-                    case "r":
-                        p.name = "rook "+partV[1];
-                        if(partV[1].equals("white"))
-                            board.pieces[posNew[0]][posNew[1]].setBackgroundResource(R.drawable.white_rook);
-                        else
-                            board.pieces[posNew[0]][posNew[1]].setBackgroundResource(R.drawable.black_rook);
-                        break;
-                }
-                board.pieces[posNew[0]][posNew[1]].setTag(p);
-            }
-
-            //check đã win hay thua
-            //nếu đã end kill thread
-            if(!pos[5].equals(" ")) {
-                switch (pos[5]) {
-                    case "W":
-                        isWin = isWhite ? 1 : -1;
-                        break;
-                    case "B":
-                        isWin = isWhite ? -1 : 1;
-                        break;
-                    case "D":
-                        isWin = 2;
-                        break;
-                    default:
-                        break;
-                }
-                thrCheckMoved.interrupt();
-                endGameNotify();
-            }
-
-            isCheckMate = isCheckMate(board.pieces[posNew[0]][posNew[1]]);
-            reDraw();
-            reDrawEffect();
-
-            isWaitingMove = false;
-            isCheckMoved = false;
-        }
-    }
-
-    class GetPostMoveAble extends AsyncTask<View, ArrayList<int[]>, String>{
-        @Override
-        protected String doInBackground(View... uri) {
-            moveAble = getMoveAble(uri[0]);
-            for (int i = 0; i < moveAble.size(); i++) {
-                int[] temp = moveAble.get(i);
-                Log.v("moveAble", temp[0] + " " + temp[1]);
-            }
-            addEffectMoveAble();
-
-            return "ok";
-        }
-
-        @Override
-        protected void onPostExecute(String r) {
-            super.onPostExecute(r);
-            reDrawEffect();
-        }
-    }
-
-    private void createThreadCheckMoved(){
-        //thread 2 giây sẽ check nước đi của đối phương
-        thrCheckMoved = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    while (true) {
-                        if(!isCheckMoved) {
-                            isCheckMoved = true;
-                            new PostSendCheckMoved().execute(getString(R.string.url_API));
-                        }
-                        Thread.sleep(2000);
-                    }
-                }catch (Exception e){
-                    Log.v("Thread check moved", e.getMessage()+"");
-                }
-            }
-        });
-        thrCheckMoved.start();
-    }
-
-    private void setPostRequestContent(HttpURLConnection conn, JSONObject jsonObject) throws IOException {
-        //copy mạng
-        //để đưa json lên api
-        OutputStream os = conn.getOutputStream();
-        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(os, "UTF-8"));
-        writer.write(jsonObject.toString());
-        Log.i(MainActivity.class.toString(), jsonObject.toString());
-        writer.flush();
-        writer.close();
-        os.close();
-    }
-
+//    @Override
+//    public void onPause(){
+//        super.onPause();
+//        thrCheckMoved.interrupt();
+//    }
+//
+//    @Override
+//    public void onResume(){
+//        super.onResume();
+//        thrCheckMoved.start();
+//    }
 }

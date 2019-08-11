@@ -21,8 +21,8 @@ public class Team {
         this.kill = kill;
     }
 
-    ArrayList<ImageView> alive;
-    public ArrayList<ImageView> kill;
+    public ArrayList<ImageView> alive;
+    public  ArrayList<ImageView> kill;
 
     public Team(Team t) {
         this.alive = new ArrayList<>(t.alive);
