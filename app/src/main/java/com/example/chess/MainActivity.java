@@ -13,6 +13,7 @@ import android.widget.Button;
 import com.example.chess.AsyncTasks.RequestCancelLobby;
 import com.example.chess.AsyncTasks.RequestCheckRec;
 import com.example.chess.AsyncTasks.RequestLobby;
+import com.example.chess.Data.DbHelper;
 import com.example.chess.Threads.ThrCheckLobby;
 
 import org.json.JSONObject;
@@ -22,6 +23,7 @@ public class MainActivity extends AppCompatActivity {
     public static Thread thrCheckPlayerInLobby;
     public static JSONObject json = new JSONObject();
     public static String matchId = "";
+    DbHelper db;
 
     public static boolean isConnected = false;
     public static boolean isJoining = false;
@@ -33,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        db = new DbHelper(this);
         networkReceiver = new NetworkChangeReceiver();
         thrCheckPlayerInLobby = new ThrCheckLobby(this, getString(R.string.url_API));
 

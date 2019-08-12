@@ -16,9 +16,14 @@
             android:name=".ChatActivity"
             android:label="@string/title_activity_chat"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar">
-
         </activity>
-        <activity android:name=".SignIn"></activity>
+        <activity android:name=".SignIn">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
         <activity android:name=".SignUp">
 
         </activity>
@@ -34,11 +39,7 @@
         </receiver>
 
         <activity android:name=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
 
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
         </activity>
         <activity android:name=".BoardActivity" />
     </application>

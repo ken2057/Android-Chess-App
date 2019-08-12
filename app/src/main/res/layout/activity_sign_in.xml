@@ -37,6 +37,7 @@
             android:layout_width="match_parent"
             android:layout_height="90dp">
             <EditText
+                android:id="@+id/sign_in_id"
                 android:gravity="top"
                 android:hint="@string/sign_in_account_name_hint"
                 android:textSize="30sp"
@@ -67,6 +68,7 @@
             android:layout_width="match_parent"
             android:layout_height="90dp">
             <EditText
+                android:id="@+id/sign_in_password"
                 android:gravity="top"
                 android:hint="@string/sign_in_password_hint"
                 android:textSize="30sp"
@@ -93,6 +95,7 @@
             android:background="@drawable/button"
             android:layout_gravity="center"/>
         <Button
+            android:id="@+id/sign_up"
             android:text="Sign Up"
             android:layout_height="wrap_content"
             android:textStyle="bold"
