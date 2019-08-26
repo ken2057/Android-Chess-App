@@ -7,7 +7,7 @@
     <color name="white">#edeed1</color>
     <color name="checkmate">#cf213e</color>
     <color name="moveAble">#85aff2</color>
-    <color name="colorTransparent">#ffffff</color>
+    <color name="colorTransparent">#F1799F</color>
     <color name="colorGradientStart">#535A5E</color>
     <!--<color name="colorGradientCenter">#363636</color>-->
     <color name="colorGradientEnd">#F1799F</color>

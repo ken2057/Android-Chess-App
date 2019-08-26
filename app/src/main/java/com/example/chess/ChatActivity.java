@@ -61,30 +61,27 @@ public class ChatActivity extends AppCompatActivity {
     private void addBtnEvent(){
         Button btnSend = findViewById(R.id.btnChatSend);
 
-        btnSend.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                EditText txt = findViewById(R.id.txtChat);
-                if(!txt.getText().toString().equals("")){
-                    try {
-                        String text = txt.getText().toString();
-                        txt.setText("");
+        btnSend.setOnClickListener(view -> {
+            EditText txt = findViewById(R.id.txtChat);
+            if(!txt.getText().toString().equals("")){
+                try {
+                    String text = txt.getText().toString();
+                    txt.setText("");
 
-                        String msg = text.replace("\"","\'").replace("\n","");
-                        new PostSendChat().execute(msg).get();
-                        BoardActivity.chatIdOrder.add(BoardActivity.isWhite? "White": "Black");
-                        BoardActivity.chatMsg.add(text);
-                        BoardActivity.numChat += 1;
+                    String msg = text.replace("\"","\'").replace("\n","");
+                    new PostSendChat().execute(msg).get();
+                    BoardActivity.chatIdOrder.add(BoardActivity.isWhite? "White": "Black");
+                    BoardActivity.chatMsg.add(text);
+                    BoardActivity.numChat += 1;
 //                        resetChat();
 
-                        chatAdt.notifyDataSetChanged();
-                    }
-                    catch (Exception e){
-                        //
-                    }
-
-
+                    chatAdt.notifyDataSetChanged();
                 }
+                catch (Exception e){
+                    //
+                }
+
+
             }
         });
     }

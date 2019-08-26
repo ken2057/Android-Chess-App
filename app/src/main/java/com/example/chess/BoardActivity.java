@@ -153,7 +153,11 @@ public class BoardActivity extends AppCompatActivity {
         final View customView = layoutInflater.inflate(R.layout.activity_test,null);
 
         //instantiate popup window
-        final PopupWindow popupWindow = new PopupWindow(customView, GridLayout.LayoutParams.WRAP_CONTENT, GridLayout.LayoutParams.WRAP_CONTENT);
+        final PopupWindow popupWindow = new PopupWindow(
+                customView,
+                GridLayout.LayoutParams.WRAP_CONTENT,
+                GridLayout.LayoutParams.WRAP_CONTENT
+        );
 
         //display the popup window
 //        popupWindow.showAtLocation(BoardActivity, Gravity.CENTER, 0, 0);
@@ -178,45 +182,33 @@ public class BoardActivity extends AppCompatActivity {
             imgB4.setBackgroundResource(R.drawable.black_queen);
         }
         //add event khi bấm chọn phong tốt
-        imgB1.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Log.v("image button", view.getId()+"");
-                popupWindow.dismiss();
-                isEvolve = false;
-                pawnEvolveTo = "bishop "+partV[1];
-                pawnEvolve();
-            }
+        imgB1.setOnClickListener(view -> {
+            Log.v("image button", view.getId()+"");
+            popupWindow.dismiss();
+            isEvolve = false;
+            pawnEvolveTo = "bishop "+partV[1];
+            pawnEvolve();
         });
-        imgB2.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Log.v("image button", view.getId()+"");
-                popupWindow.dismiss();
-                isEvolve = false;
-                pawnEvolveTo = "knight "+partV[1];
-                pawnEvolve();
-            }
+        imgB2.setOnClickListener(view -> {
+            Log.v("image button", view.getId()+"");
+            popupWindow.dismiss();
+            isEvolve = false;
+            pawnEvolveTo = "knight "+partV[1];
+            pawnEvolve();
         });
-        imgB3.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Log.v("image button", view.getId()+"");
-                popupWindow.dismiss();
-                isEvolve = false;
-                pawnEvolveTo = "rook "+partV[1];
-                pawnEvolve();
-            }
+        imgB3.setOnClickListener(view -> {
+            Log.v("image button", view.getId()+"");
+            popupWindow.dismiss();
+            isEvolve = false;
+            pawnEvolveTo = "rook "+partV[1];
+            pawnEvolve();
         });
-        imgB4.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Log.v("image button", view.getId()+"");
-                popupWindow.dismiss();
-                isEvolve = false;
-                pawnEvolveTo = "queen "+partV[1];
-                pawnEvolve();
-            }
+        imgB4.setOnClickListener(view -> {
+            Log.v("image button", view.getId()+"");
+            popupWindow.dismiss();
+            isEvolve = false;
+            pawnEvolveTo = "queen "+partV[1];
+            pawnEvolve();
         });
 
         popupWindow.setFocusable(true);
@@ -273,73 +265,70 @@ public class BoardActivity extends AppCompatActivity {
         img.setLayoutParams(lp);
         img.setClickable(true);
 
-        img.setOnDragListener(new View.OnDragListener() {
-            @Override
-            public boolean onDrag(View v, DragEvent e) {
+        img.setOnDragListener((v, e) -> {
 
-                if (e.getAction() == DragEvent.ACTION_DROP) {
-                    GridLayout gridEffect = findViewById(R.id.gridEffect);
-                    ImageView imgView = (ImageView) e.getLocalState();
-                    int[] posNew = ((Piece) v.getTag()).getPos();
-                    int[] posOld = ((Piece) imgView.getTag()).getPos();
-                    boolean flag = false;
-                    //check k drop empty
-                    for (int i = 0; i < moveAble.size(); i++) {
-                        if (Arrays.equals(posNew, moveAble.get(i))) {
-                            flag = true;
-                            break;
-                        }
-                    }
-                    Log.v("DROP IN BLOCK", posNew[0] + " " + posNew[1]);
-                    if (flag) {
-                        if (board.pieces[posNew[0]][posNew[1]].getTag().toString().contains("black")) {
-                            whiteTeam.kill.add(board.pieces[posNew[0]][posNew[1]]);
-                            blackTeam.alive.remove(board.pieces[posNew[0]][posNew[1]]);
-                        } else {
-                            blackTeam.kill.add(board.pieces[posNew[0]][posNew[1]]);
-                            whiteTeam.alive.remove(board.pieces[posNew[0]][posNew[1]]);
-                        }
-
-                        spAct.setLastKillPos(posNew);
-                        spAct.setLastPieceMove(board.pieces[posOld[0]][posOld[1]].getTag().toString());
-                        spAct.setLastPiecePos(posOld);
-                        spAct.setCurrentLastMovePiecePos(posNew);
-
-                        Log.v("LAST PIECE KILL", spAct.getLastPieceMove());
-
-                        //phong tốt khi tốt đi vào hàng 0 hoặc 7
-                        //else reset value đè phòng nó đã phogn tốt nhưng vẫn bị stuck
-                        if ((posNew[0] == 0 || posNew[0] == 7) && imgView.getTag().toString().contains("pawn")) {
-                            Log.v("Pawn evolve", posNew[0] + ":" + posNew[1]);
-                            createPopupPawnEvolve(imgView);
-                        }else{pawnEvolveTo = " ";}
-
-                        //tạo empty view tại vị trí bị ăn và swap với vị trí đi ăn
-                        ImageView emptyView = createEmptyView(posNew);
-                        board.pieces[posNew[0]][posNew[1]] = emptyView;
-
-                        Piece p = ((Piece) board.pieces[posOld[0]][posOld[1]].getTag());
-                        p.setMoved();
-                        board.pieces[posOld[0]][posOld[1]].setTag(p);
-
-                        board.swap(posNew, posOld);
-
-                        isCheckMate = isCheckMate(board.pieces[posNew[0]][posNew[1]]);
-
-                        reDraw();
-                    } else {
-                        pawnEvolveTo = " ";
-                        spAct.setLastKillPos(new int[]{-1, -1});
-                        gridEffect.removeAllViewsInLayout();
-                        if (isCheckMate) {
-                            moveAble = new ArrayList<>();
-                            reDrawEffect();
-                        }
+            if (e.getAction() == DragEvent.ACTION_DROP) {
+                GridLayout gridEffect = findViewById(R.id.gridEffect);
+                ImageView imgView = (ImageView) e.getLocalState();
+                int[] posNew = ((Piece) v.getTag()).getPos();
+                int[] posOld = ((Piece) imgView.getTag()).getPos();
+                boolean flag = false;
+                //check k drop empty
+                for (int i = 0; i < moveAble.size(); i++) {
+                    if (Arrays.equals(posNew, moveAble.get(i))) {
+                        flag = true;
+                        break;
                     }
                 }
+                Log.v("DROP IN BLOCK", posNew[0] + " " + posNew[1]);
+                if (flag) {
+                    if (board.pieces[posNew[0]][posNew[1]].getTag().toString().contains("black")) {
+                        whiteTeam.kill.add(board.pieces[posNew[0]][posNew[1]]);
+                        blackTeam.alive.remove(board.pieces[posNew[0]][posNew[1]]);
+                    } else {
+                        blackTeam.kill.add(board.pieces[posNew[0]][posNew[1]]);
+                        whiteTeam.alive.remove(board.pieces[posNew[0]][posNew[1]]);
+                    }
 
-                return true;
+                    spAct.setLastKillPos(posNew);
+                    spAct.setLastPieceMove(board.pieces[posOld[0]][posOld[1]].getTag().toString());
+                    spAct.setLastPiecePos(posOld);
+                    spAct.setCurrentLastMovePiecePos(posNew);
+
+                    Log.v("LAST PIECE KILL", spAct.getLastPieceMove());
+
+                    //phong tốt khi tốt đi vào hàng 0 hoặc 7
+                    //else reset value đè phòng nó đã phogn tốt nhưng vẫn bị stuck
+                    if ((posNew[0] == 0 || posNew[0] == 7) && imgView.getTag().toString().contains("pawn")) {
+                        Log.v("Pawn evolve", posNew[0] + ":" + posNew[1]);
+                        createPopupPawnEvolve(imgView);
+                    }else{pawnEvolveTo = " ";}
+
+                    //tạo empty view tại vị trí bị ăn và swap với vị trí đi ăn
+                    ImageView emptyView = createEmptyView(posNew);
+                    board.pieces[posNew[0]][posNew[1]] = emptyView;
+
+                    Piece p = ((Piece) board.pieces[posOld[0]][posOld[1]].getTag());
+                    p.setMoved();
+                    board.pieces[posOld[0]][posOld[1]].setTag(p);
+
+                    board.swap(posNew, posOld);
+
+                    isCheckMate = isCheckMate(board.pieces[posNew[0]][posNew[1]]);
+
+                    reDraw();
+                } else {
+                    pawnEvolveTo = " ";
+                    spAct.setLastKillPos(new int[]{-1, -1});
+                    gridEffect.removeAllViewsInLayout();
+                    if (isCheckMate) {
+                        moveAble = new ArrayList<>();
+                        reDrawEffect();
+                    }
+                }
             }
+
+            return true;
         });
         //thêm sự kiện drag khi mà là team
         if(isWhite == img.getTag().toString().contains("white")) {
@@ -380,109 +369,106 @@ public class BoardActivity extends AppCompatActivity {
         img.setLayoutParams(lp);
         img.setTag(new Piece("null", new int[]{pos[0], pos[1]}));
 
-        img.setOnDragListener(new View.OnDragListener() {
-            @Override
-            public boolean onDrag(View v, DragEvent e) {
-                if (e.getAction() == DragEvent.ACTION_DROP) {
-                    ImageView imgView = (ImageView) e.getLocalState();
+        img.setOnDragListener((v, e) -> {
+            if (e.getAction() == DragEvent.ACTION_DROP) {
+                ImageView imgView = (ImageView) e.getLocalState();
 
-                    int[] posNew = ((Piece) v.getTag()).getPos();
-                    int[] posOld = ((Piece) imgView.getTag()).getPos();
-                    spAct.resetCastling();
+                int[] posNew = ((Piece) v.getTag()).getPos();
+                int[] posOld = ((Piece) imgView.getTag()).getPos();
+                spAct.resetCastling();
 
-                    //check khong thay doi vi tri
-                    boolean flag = false;
-                    for (int i = 0; i < moveAble.size(); i++) {
-                        if (Arrays.equals(posNew, moveAble.get(i))) {
-                            flag = true;
+                //check khong thay doi vi tri
+                boolean flag = false;
+                for (int i = 0; i < moveAble.size(); i++) {
+                    if (Arrays.equals(posNew, moveAble.get(i))) {
+                        flag = true;
+                        break;
+                    }
+                }
+
+                Log.v("DROP EMPTY", posNew[0] + " " + posNew[1]+" "+flag);
+                if (flag) {
+                    //an tot qua duong
+                    if (Arrays.equals(spAct.getTotQuaDuongAt(), posNew)) {
+                        int[] temp = spAct.getCurrentLastMovePiecePos();
+                        if (board.pieces[temp[0]][temp[1]].getTag().toString().contains("black")) {
+                            whiteTeam.kill.add(board.pieces[temp[0]][temp[1]]);
+                            blackTeam.alive.remove(board.pieces[temp[0]][temp[1]]);
+                        } else {
+                            blackTeam.kill.add(board.pieces[temp[0]][temp[1]]);
+                            whiteTeam.alive.remove(board.pieces[temp[0]][temp[1]]);
+                        }
+                        spAct.setLastKillPos(temp);
+
+                        ImageView imgTemp = createEmptyView(temp);
+                        board.pieces[temp[0]][temp[1]] = imgTemp;
+
+                        spAct.setTotQuaDuongAt(new int[]{-1, -1});
+                    }else{
+                        spAct.setLastKillPos(new int[]{-1, -1});
+                    }
+                    spAct.setLastPieceMove(board.pieces[posOld[0]][posOld[1]].getTag().toString());
+
+                    //nhap thanh
+                    for (int i = 0; i < posCastling.size(); i++) {
+                        int[] posNhap = posCastling.get(i);
+                        if (Arrays.equals(posNhap, posNew)) {
+                            ImageView rook = new ImageView(context);
+                            int[] posSwap = new int[]{posOld[0], -1};
+                            //left
+                            if (posNhap[1] - posOld[1] < 0) {
+                                rook = board.pieces[posOld[0]][0];
+                                posSwap[1] = posNew[1] + 1;
+                            }
+                            //right
+                            else {
+                                rook = board.pieces[posOld[0]][7];
+                                posSwap[1] = posNew[1] - 1;
+                            }
+
+                            //swap xe
+                            Piece p = (Piece) rook.getTag();
+                            p.setMoved();
+                            rook.setTag(p);
+                            int[] rookPos = ((Piece) rook.getTag()).getPos();
+
+                            board.swap(posSwap, rookPos);
+
+                            spAct.castlingNewPos = posSwap;
+                            spAct.castlingOldPos = rookPos;
+
                             break;
                         }
                     }
 
-                    Log.v("DROP EMPTY", posNew[0] + " " + posNew[1]+" "+flag);
-                    if (flag) {
-                        //an tot qua duong
-                        if (Arrays.equals(spAct.getTotQuaDuongAt(), posNew)) {
-                            int[] temp = spAct.getCurrentLastMovePiecePos();
-                            if (board.pieces[temp[0]][temp[1]].getTag().toString().contains("black")) {
-                                whiteTeam.kill.add(board.pieces[temp[0]][temp[1]]);
-                                blackTeam.alive.remove(board.pieces[temp[0]][temp[1]]);
-                            } else {
-                                blackTeam.kill.add(board.pieces[temp[0]][temp[1]]);
-                                whiteTeam.alive.remove(board.pieces[temp[0]][temp[1]]);
-                            }
-                            spAct.setLastKillPos(temp);
+                    //phong tốt khi tốt đi vào hàng 0 hoặc 7
+                    //else reset value đè phòng nó đã phogn tốt nhưng vẫn bị stuck
+                    if ((posNew[0] == 0 || posNew[0] == 7) && imgView.getTag().toString().contains("pawn")) {
+                        Log.v("Pawn evolve", posNew[0] + ":" + posNew[1]);
+                        createPopupPawnEvolve(imgView);
+                    }else{pawnEvolveTo = " ";}
 
-                            ImageView imgTemp = createEmptyView(temp);
-                            board.pieces[temp[0]][temp[1]] = imgTemp;
+                    Log.v("LAST PIECE MOVED", spAct.getLastPieceMove());
+                    spAct.setLastPiecePos(posOld);
+                    spAct.setCurrentLastMovePiecePos(posNew);
 
-                            spAct.setTotQuaDuongAt(new int[]{-1, -1});
-                        }else{
-                            spAct.setLastKillPos(new int[]{-1, -1});
-                        }
-                        spAct.setLastPieceMove(board.pieces[posOld[0]][posOld[1]].getTag().toString());
+                    Piece p = ((Piece) board.pieces[posOld[0]][posOld[1]].getTag());
+                    p.setMoved();
+                    board.pieces[posOld[0]][posOld[1]].setTag(p);
 
-                        //nhap thanh
-                        for (int i = 0; i < posCastling.size(); i++) {
-                            int[] posNhap = posCastling.get(i);
-                            if (Arrays.equals(posNhap, posNew)) {
-                                ImageView rook = new ImageView(context);
-                                int[] posSwap = new int[]{posOld[0], -1};
-                                //left
-                                if (posNhap[1] - posOld[1] < 0) {
-                                    rook = board.pieces[posOld[0]][0];
-                                    posSwap[1] = posNew[1] + 1;
-                                }
-                                //right
-                                else {
-                                    rook = board.pieces[posOld[0]][7];
-                                    posSwap[1] = posNew[1] - 1;
-                                }
+                    board.swap(posNew, posOld);
 
-                                //swap xe
-                                Piece p = (Piece) rook.getTag();
-                                p.setMoved();
-                                rook.setTag(p);
-                                int[] rookPos = ((Piece) rook.getTag()).getPos();
+                    isCheckMate = isCheckMate(board.pieces[posNew[0]][posNew[1]]);
 
-                                board.swap(posSwap, rookPos);
+                    reDraw();
+                } else {
 
-                                spAct.castlingNewPos = posSwap;
-                                spAct.castlingOldPos = rookPos;
-
-                                break;
-                            }
-                        }
-
-                        //phong tốt khi tốt đi vào hàng 0 hoặc 7
-                        //else reset value đè phòng nó đã phogn tốt nhưng vẫn bị stuck
-                        if ((posNew[0] == 0 || posNew[0] == 7) && imgView.getTag().toString().contains("pawn")) {
-                            Log.v("Pawn evolve", posNew[0] + ":" + posNew[1]);
-                            createPopupPawnEvolve(imgView);
-                        }else{pawnEvolveTo = " ";}
-
-                        Log.v("LAST PIECE MOVED", spAct.getLastPieceMove());
-                        spAct.setLastPiecePos(posOld);
-                        spAct.setCurrentLastMovePiecePos(posNew);
-
-                        Piece p = ((Piece) board.pieces[posOld[0]][posOld[1]].getTag());
-                        p.setMoved();
-                        board.pieces[posOld[0]][posOld[1]].setTag(p);
-
-                        board.swap(posNew, posOld);
-
-                        isCheckMate = isCheckMate(board.pieces[posNew[0]][posNew[1]]);
-
-                        reDraw();
-                    } else {
-
-                        pawnEvolveTo = " ";
-                        if (!isCheckMate)
-                            gridEffect.removeAllViewsInLayout();
-                    }
+                    pawnEvolveTo = " ";
+                    if (!isCheckMate)
+                        gridEffect.removeAllViewsInLayout();
                 }
-                return true;
             }
+            return true;
         });
 
         return img;
